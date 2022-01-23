@@ -1,0 +1,13 @@
+//this csv should only have 13 columns, first one labeled expense and then one for each month of the year--do not exceed 13 columns!
+//only enter values as float numbers. pls do not enter $ or other symbols/chars
+//the csv parser will skip empty rows and comment rows.
+expense,jan,feb,mar,apr,may,jun,jul,aug,sep,oct,nov,dec,jan22
+groceries,345,283,234,534,253,753,323,435,423,222,574,777
+rent,1500,1500,1500,1500,1500,1500,1500,1500,1500,1500,1500,1500
+electricity,123,312,222,321,232,341,123,211,121,118,211,231
+phone,50,50,50,50,50,50,50,50,50,50,50,50
+gas,75,82,102,150,400,121,83,99,122,133,199,222
+
+misc,1	,201,75,192,144,234,922,83,129,3222,345,733,643
+entertainment,201,75,192,144,234,922,83,129,3222,345,733,643
+pizza,$35
