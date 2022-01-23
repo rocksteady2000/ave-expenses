@@ -4,6 +4,6 @@ Given a csv file with similar format as budget.csv in this repo containing month
 To run program, from root dir run the following shell commands:
 >> make
 
->> make run filename=<filename>
+>> make run filename=< filename >
   
 Sample files from data/ dir can be used.
