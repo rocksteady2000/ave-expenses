@@ -9,4 +9,5 @@ To run program, from root dir run the following shell commands:
 Sample files from data/ dir can be used.
 Usage example:
 >make
+
 >make run filename=data/budget.csv
