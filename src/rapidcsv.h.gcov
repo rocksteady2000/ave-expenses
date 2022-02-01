@@ -1,0 +1,2329 @@
+        -:    0:Source:./../include/rapidcsv.h
+        -:    0:Graph:expenses.gcno
+        -:    0:Data:expenses.gcda
+        -:    0:Runs:2
+        -:    0:Programs:1
+        -:    1:/*
+        -:    2: * rapidcsv.h
+        -:    3: *
+        -:    4: * URL:      https://github.com/d99kris/rapidcsv
+        -:    5: * Version:  8.53
+        -:    6: *
+        -:    7: * Copyright (C) 2017-2021 Kristofer Berggren
+        -:    8: * All rights reserved.
+        -:    9: *
+        -:   10: * rapidcsv is distributed under the BSD 3-Clause license, see LICENSE for details.
+        -:   11: *
+        -:   12: */
+        -:   13:
+        -:   14:#pragma once
+        -:   15:
+        -:   16:#include <algorithm>
+        -:   17:#include <cassert>
+        -:   18:#include <cmath>
+        -:   19:#ifdef HAS_CODECVT
+        -:   20:#include <codecvt>
+        -:   21:#include <locale>
+        -:   22:#endif
+        -:   23:#include <fstream>
+        -:   24:#include <functional>
+        -:   25:#include <iostream>
+        -:   26:#include <map>
+        -:   27:#include <sstream>
+        -:   28:#include <string>
+        -:   29:#include <typeinfo>
+        -:   30:#include <vector>
+        -:   31:
+        -:   32:#if defined(_MSC_VER)
+        -:   33:#include <BaseTsd.h>
+        -:   34:typedef SSIZE_T ssize_t;
+        -:   35:#endif
+        -:   36:
+        -:   37:namespace rapidcsv
+        -:   38:{
+        -:   39:#if defined(_MSC_VER)
+        -:   40:  static const bool sPlatformHasCR = true;
+        -:   41:#else
+        -:   42:  static const bool sPlatformHasCR = false;
+        -:   43:#endif
+        -:   44:
+        -:   45:  /**
+        -:   46:   * @brief     Datastructure holding parameters controlling how invalid numbers (including
+        -:   47:   *            empty strings) should be handled.
+        -:   48:   */
+        -:   49:  struct ConverterParams
+        -:   50:  {
+        -:   51:    /**
+        -:   52:     * @brief   Constructor
+        -:   53:     * @param   pHasDefaultConverter  specifies if conversion of non-numerical strings shall be
+        -:   54:     *                                converted to a default numerical value, instead of causing
+        -:   55:     *                                an exception to be thrown (default).
+        -:   56:     * @param   pDefaultFloat         floating-point default value to represent invalid numbers.
+        -:   57:     * @param   pDefaultInteger       integer default value to represent invalid numbers.
+        -:   58:     */
+function _ZN8rapidcsv15ConverterParamsC1Ebex called 2 returned 100% blocks executed 100%
+function _ZN8rapidcsv15ConverterParamsC2Ebex called 2 returned 100% blocks executed 100%
+        -:   59:    explicit ConverterParams(const bool pHasDefaultConverter = false,
+        -:   60:                             const long double pDefaultFloat = std::numeric_limits<long double>::signaling_NaN(),
+        -:   61:                             const long long pDefaultInteger = 0)
+        2:   62:      : mHasDefaultConverter(pHasDefaultConverter)
+        2:   63:      , mDefaultFloat(pDefaultFloat)
+        2:   64:      , mDefaultInteger(pDefaultInteger)
+        2:   65:    {
+        2:   66:    }
+        2:   66-block  0
+        2:   66-block  1
+        -:   67:
+        -:   68:    /**
+        -:   69:     * @brief   specifies if conversion of non-numerical strings shall be converted to a default
+        -:   70:     *          numerical value, instead of causing an exception to be thrown (default).
+        -:   71:     */
+        -:   72:    bool mHasDefaultConverter;
+        -:   73:
+        -:   74:    /**
+        -:   75:     * @brief   floating-point default value to represent invalid numbers.
+        -:   76:     */
+        -:   77:    long double mDefaultFloat;
+        -:   78:
+        -:   79:    /**
+        -:   80:     * @brief   integer default value to represent invalid numbers.
+        -:   81:     */
+        -:   82:    long long mDefaultInteger;
+        -:   83:  };
+        -:   84:
+        -:   85:  /**
+        -:   86:   * @brief     Exception thrown when attempting to access Document data in a datatype which
+        -:   87:   *            is not supported by the Converter class.
+        -:   88:   */
+function _ZN8rapidcsv12no_converterC1Ev called 0 returned 0% blocks executed 0%
+function _ZN8rapidcsv12no_converterD1Ev called 0 returned 0% blocks executed 0%
+function _ZN8rapidcsv12no_converterC2Ev called 0 returned 0% blocks executed 0%
+function _ZN8rapidcsv12no_converterD0Ev called 0 returned 0% blocks executed 0%
+function _ZN8rapidcsv12no_converterD2Ev called 0 returned 0% blocks executed 0%
+    #####:   89:  class no_converter : public std::exception
+    $$$$$:   89-block  0
+    $$$$$:   89-block  1
+    $$$$$:   89-block  2
+    $$$$$:   89-block  3
+    $$$$$:   89-block  4
+        -:   90:  {
+        -:   91:    /**
+        -:   92:     * @brief   Provides details about the exception
+        -:   93:     * @returns an explanatory string
+        -:   94:     */
+function _ZNK8rapidcsv12no_converter4whatEv called 0 returned 0% blocks executed 0%
+        -:   95:    virtual const char* what() const throw()
+        -:   96:    {
+    #####:   97:      return "unsupported conversion datatype";
+    $$$$$:   97-block  0
+        -:   98:    }
+        -:   99:  };
+        -:  100:
+        -:  101:  /**
+        -:  102:   * @brief     Class providing conversion to/from numerical datatypes and strings. Only
+        -:  103:   *            intended for rapidcsv internal usage, but exposed externally to allow
+        -:  104:   *            specialization for custom datatype conversions.
+        -:  105:   */
+        -:  106:  template<typename T>
+        -:  107:  class Converter
+        -:  108:  {
+        -:  109:  public:
+        -:  110:    /**
+        -:  111:     * @brief   Constructor
+        -:  112:     * @param   pConverterParams      specifies how conversion of non-numerical values to
+        -:  113:     *                                numerical datatype shall be handled.
+        -:  114:     */
+function _ZN8rapidcsv9ConverterIfEC1ERKNS_15ConverterParamsE called 14 returned 100% blocks executed 100%
+function _ZN8rapidcsv9ConverterIfEC2ERKNS_15ConverterParamsE called 14 returned 100% blocks executed 100%
+        -:  115:    Converter(const ConverterParams& pConverterParams)
+       14:  116:      : mConverterParams(pConverterParams)
+       14:  117:    {
+       14:  118:    }
+       14:  118-block  0
+       14:  118-block  1
+        -:  119:
+        -:  120:    /**
+        -:  121:     * @brief   Converts numerical value to string representation.
+        -:  122:     * @param   pVal                  numerical value
+        -:  123:     * @param   pStr                  output string
+        -:  124:     */
+        -:  125:    void ToStr(const T& pVal, std::string& pStr) const
+        -:  126:    {
+        -:  127:      if (typeid(T) == typeid(int) ||
+        -:  128:          typeid(T) == typeid(long) ||
+        -:  129:          typeid(T) == typeid(long long) ||
+        -:  130:          typeid(T) == typeid(unsigned) ||
+        -:  131:          typeid(T) == typeid(unsigned long) ||
+        -:  132:          typeid(T) == typeid(unsigned long long) ||
+        -:  133:          typeid(T) == typeid(float) ||
+        -:  134:          typeid(T) == typeid(double) ||
+        -:  135:          typeid(T) == typeid(long double) ||
+        -:  136:          typeid(T) == typeid(char))
+        -:  137:      {
+        -:  138:        std::ostringstream out;
+        -:  139:        out << pVal;
+        -:  140:        pStr = out.str();
+        -:  141:      }
+        -:  142:      else
+        -:  143:      {
+        -:  144:        throw no_converter();
+        -:  145:      }
+        -:  146:    }
+        -:  147:
+        -:  148:    /**
+        -:  149:     * @brief   Converts string holding a numerical value to numerical datatype representation.
+        -:  150:     * @param   pVal                  numerical value
+        -:  151:     * @param   pStr                  output string
+        -:  152:     */
+function _ZNK8rapidcsv9ConverterIfE5ToValERKNSt3__112basic_stringIcNS2_11char_traitsIcEENS2_9allocatorIcEEEERf called 158 returned 99% blocks executed 39%
+        -:  153:    void ToVal(const std::string& pStr, T& pVal) const
+        -:  154:    {
+        -:  155:      try
+        -:  156:      {
+      158:  157:        if (typeid(T) == typeid(int))
+      158:  157-block  0
+branch  0 taken 0%
+branch  1 taken 100%
+        -:  158:        {
+    #####:  159:          pVal = static_cast<T>(std::stoi(pStr));
+    $$$$$:  159-block  0
+branch  0 never executed
+branch  1 never executed
+    #####:  160:          return;
+    $$$$$:  160-block  0
+        -:  161:        }
+      158:  162:        else if (typeid(T) == typeid(long))
+      158:  162-block  0
+branch  0 taken 0%
+branch  1 taken 100%
+        -:  163:        {
+    #####:  164:          pVal = static_cast<T>(std::stol(pStr));
+    $$$$$:  164-block  0
+branch  0 never executed
+branch  1 never executed
+    #####:  165:          return;
+    $$$$$:  165-block  0
+        -:  166:        }
+      158:  167:        else if (typeid(T) == typeid(long long))
+      158:  167-block  0
+branch  0 taken 0%
+branch  1 taken 100%
+        -:  168:        {
+    #####:  169:          pVal = static_cast<T>(std::stoll(pStr));
+    $$$$$:  169-block  0
+branch  0 never executed
+branch  1 never executed
+    #####:  170:          return;
+    $$$$$:  170-block  0
+        -:  171:        }
+      158:  172:        else if (typeid(T) == typeid(unsigned))
+      158:  172-block  0
+branch  0 taken 0%
+branch  1 taken 100%
+        -:  173:        {
+    #####:  174:          pVal = static_cast<T>(std::stoul(pStr));
+    $$$$$:  174-block  0
+branch  0 never executed
+branch  1 never executed
+    #####:  175:          return;
+    $$$$$:  175-block  0
+        -:  176:        }
+      158:  177:        else if (typeid(T) == typeid(unsigned long))
+      158:  177-block  0
+branch  0 taken 0%
+branch  1 taken 100%
+        -:  178:        {
+    #####:  179:          pVal = static_cast<T>(std::stoul(pStr));
+    $$$$$:  179-block  0
+branch  0 never executed
+branch  1 never executed
+    #####:  180:          return;
+    $$$$$:  180-block  0
+        -:  181:        }
+      158:  182:        else if (typeid(T) == typeid(unsigned long long))
+      158:  182-block  0
+branch  0 taken 0%
+branch  1 taken 100%
+        -:  183:        {
+    #####:  184:          pVal = static_cast<T>(std::stoull(pStr));
+    $$$$$:  184-block  0
+branch  0 never executed
+branch  1 never executed
+    #####:  185:          return;
+    $$$$$:  185-block  0
+        -:  186:        }
+      158:  187:      }
+      158:  187-block  0
+        -:  188:      catch (...)
+        -:  189:      {
+    #####:  190:        if (!mConverterParams.mHasDefaultConverter)
+    $$$$$:  190-block  0
+branch  0 never executed
+branch  1 never executed
+        -:  191:        {
+    #####:  192:          throw;
+    $$$$$:  192-block  0
+branch  0 never executed
+branch  1 never executed
+        -:  193:        }
+        -:  194:        else
+        -:  195:        {
+    #####:  196:          pVal = static_cast<T>(mConverterParams.mDefaultInteger);
+        -:  197:          return;
+        -:  198:        }
+        1:  199:      }
+    $$$$$:  199-block  0
+branch  0 never executed
+branch  1 never executed
+    $$$$$:  199-block  1
+    $$$$$:  199-block  2
+        1:  199-block  3
+    $$$$$:  199-block  4
+        -:  200:
+        -:  201:      try
+        -:  202:      {
+      158:  203:        if (typeid(T) == typeid(float))
+      158:  203-block  0
+branch  0 taken 100%
+branch  1 taken 0%
+        -:  204:        {
+      158:  205:          pVal = static_cast<T>(std::stof(pStr));
+      158:  205-block  0
+branch  0 taken 99%
+branch  1 taken 1%
+      157:  206:          return;
+      157:  206-block  0
+        -:  207:        }
+    #####:  208:        else if (typeid(T) == typeid(double))
+    $$$$$:  208-block  0
+branch  0 never executed
+branch  1 never executed
+        -:  209:        {
+    #####:  210:          pVal = static_cast<T>(std::stod(pStr));
+    $$$$$:  210-block  0
+branch  0 never executed
+branch  1 never executed
+    #####:  211:          return;
+    $$$$$:  211-block  0
+        -:  212:        }
+    #####:  213:        else if (typeid(T) == typeid(long double))
+    $$$$$:  213-block  0
+branch  0 never executed
+branch  1 never executed
+        -:  214:        {
+    #####:  215:          pVal = static_cast<T>(std::stold(pStr));
+    $$$$$:  215-block  0
+branch  0 never executed
+branch  1 never executed
+    #####:  216:          return;
+    $$$$$:  216-block  0
+        -:  217:        }
+        1:  218:      }
+    $$$$$:  218-block  0
+        -:  219:      catch (...)
+        -:  220:      {
+        1:  221:        if (!mConverterParams.mHasDefaultConverter)
+        1:  221-block  0
+branch  0 taken 100%
+branch  1 taken 0%
+        -:  222:        {
+        1:  223:          throw;
+        1:  223-block  0
+branch  0 taken 100%
+branch  1 taken 0%
+        -:  224:        }
+        -:  225:        else
+        -:  226:        {
+    #####:  227:          pVal = static_cast<T>(mConverterParams.mDefaultFloat);
+        -:  228:          return;
+        -:  229:        }
+        1:  230:      }
+        1:  230-block  0
+branch  0 taken 100%
+branch  1 taken 0%
+    $$$$$:  230-block  1
+        1:  230-block  2
+        -:  231:
+    #####:  232:      if (typeid(T) == typeid(char))
+    $$$$$:  232-block  0
+branch  0 never executed
+branch  1 never executed
+        -:  233:      {
+    #####:  234:        pVal = static_cast<T>(pStr[0]);
+    #####:  235:        return;
+    $$$$$:  235-block  0
+        -:  236:      }
+        -:  237:      else
+        -:  238:      {
+    #####:  239:        throw no_converter();
+    $$$$$:  239-block  0
+        -:  240:      }
+      157:  241:    }
+    $$$$$:  241-block  0
+        1:  241-block  1
+      157:  241-block  2
+        -:  242:
+        -:  243:  private:
+        -:  244:    const ConverterParams& mConverterParams;
+        -:  245:  };
+        -:  246:
+        -:  247:  /**
+        -:  248:   * @brief     Specialized implementation handling string to string conversion.
+        -:  249:   * @param     pVal                  string
+        -:  250:   * @param     pStr                  string
+        -:  251:   */
+        -:  252:  template<>
+        -:  253:  inline void Converter<std::string>::ToStr(const std::string& pVal, std::string& pStr) const
+        -:  254:  {
+        -:  255:    pStr = pVal;
+        -:  256:  }
+        -:  257:
+        -:  258:  /**
+        -:  259:   * @brief     Specialized implementation handling string to string conversion.
+        -:  260:   * @param     pVal                  string
+        -:  261:   * @param     pStr                  string
+        -:  262:   */
+        -:  263:  template<>
+        -:  264:  inline void Converter<std::string>::ToVal(const std::string& pStr, std::string& pVal) const
+        -:  265:  {
+        -:  266:    pVal = pStr;
+        -:  267:  }
+        -:  268:
+        -:  269:  template<typename T>
+        -:  270:  using ConvFunc = std::function<void (const std::string & pStr, T & pVal)>;
+        -:  271:
+        -:  272:  /**
+        -:  273:   * @brief     Datastructure holding parameters controlling which row and column should be
+        -:  274:   *            treated as labels.
+        -:  275:   */
+        -:  276:  struct LabelParams
+        -:  277:  {
+        -:  278:    /**
+        -:  279:     * @brief   Constructor
+        -:  280:     * @param   pColumnNameIdx        specifies the zero-based row index of the column labels, setting
+        -:  281:     *                                it to -1 prevents column lookup by label name, and gives access
+        -:  282:     *                                to all rows as document data. Default: 0
+        -:  283:     * @param   pRowNameIdx           specifies the zero-based column index of the row labels, setting
+        -:  284:     *                                it to -1 prevents row lookup by label name, and gives access
+        -:  285:     *                                to all columns as document data. Default: -1
+        -:  286:     */
+function _ZN8rapidcsv11LabelParamsC1Eii called 2 returned 100% blocks executed 100%
+function _ZN8rapidcsv11LabelParamsC2Eii called 2 returned 100% blocks executed 100%
+        -:  287:    explicit LabelParams(const int pColumnNameIdx = 0, const int pRowNameIdx = -1)
+        2:  288:      : mColumnNameIdx(pColumnNameIdx)
+        2:  289:      , mRowNameIdx(pRowNameIdx)
+        2:  290:    {
+        2:  291:    }
+        2:  291-block  0
+        2:  291-block  1
+        -:  292:
+        -:  293:    /**
+        -:  294:     * @brief   specifies the zero-based row index of the column labels.
+        -:  295:     */
+        -:  296:    int mColumnNameIdx;
+        -:  297:
+        -:  298:    /**
+        -:  299:     * @brief   specifies the zero-based column index of the row labels.
+        -:  300:     */
+        -:  301:    int mRowNameIdx;
+        -:  302:  };
+        -:  303:
+        -:  304:  /**
+        -:  305:   * @brief     Datastructure holding parameters controlling how the CSV data fields are separated.
+        -:  306:   */
+        -:  307:  struct SeparatorParams
+        -:  308:  {
+        -:  309:    /**
+        -:  310:     * @brief   Constructor
+        -:  311:     * @param   pSeparator            specifies the column separator (default ',').
+        -:  312:     * @param   pTrim                 specifies whether to trim leading and trailing spaces from
+        -:  313:     *                                cells read (default false).
+        -:  314:     * @param   pHasCR                specifies whether a new document (i.e. not an existing document read)
+        -:  315:     *                                should use CR/LF instead of only LF (default is to use standard
+        -:  316:     *                                behavior of underlying platforms - CR/LF for Win, and LF for others).
+        -:  317:     * @param   pQuotedLinebreaks     specifies whether to allow line breaks in quoted text (default false)
+        -:  318:     * @param   pAutoQuote            specifies whether to automatically dequote data during read, and add
+        -:  319:     *                                quotes during write (default true).
+        -:  320:     */
+function _ZN8rapidcsv15SeparatorParamsC1Ecbbbb called 2 returned 100% blocks executed 100%
+function _ZN8rapidcsv15SeparatorParamsC2Ecbbbb called 2 returned 100% blocks executed 100%
+        -:  321:    explicit SeparatorParams(const char pSeparator = ',', const bool pTrim = false,
+        -:  322:                             const bool pHasCR = sPlatformHasCR, const bool pQuotedLinebreaks = false,
+        -:  323:                             const bool pAutoQuote = true)
+        2:  324:      : mSeparator(pSeparator)
+        2:  325:      , mTrim(pTrim)
+        2:  326:      , mHasCR(pHasCR)
+        2:  327:      , mQuotedLinebreaks(pQuotedLinebreaks)
+        2:  328:      , mAutoQuote(pAutoQuote)
+        2:  329:    {
+        2:  330:    }
+        2:  330-block  0
+        2:  330-block  1
+        -:  331:
+        -:  332:    /**
+        -:  333:     * @brief   specifies the column separator.
+        -:  334:     */
+        -:  335:    char mSeparator;
+        -:  336:
+        -:  337:    /**
+        -:  338:     * @brief   specifies whether to trim leading and trailing spaces from cells read.
+        -:  339:     */
+        -:  340:    bool mTrim;
+        -:  341:
+        -:  342:    /**
+        -:  343:     * @brief   specifies whether new documents should use CR/LF instead of LF.
+        -:  344:     */
+        -:  345:    bool mHasCR;
+        -:  346:
+        -:  347:    /**
+        -:  348:     * @brief   specifies whether to allow line breaks in quoted text.
+        -:  349:     */
+        -:  350:    bool mQuotedLinebreaks;
+        -:  351:
+        -:  352:    /**
+        -:  353:     * @brief   specifies whether to automatically dequote cell data.
+        -:  354:     */
+        -:  355:    bool mAutoQuote;
+        -:  356:  };
+        -:  357:
+        -:  358:  /**
+        -:  359:   * @brief     Datastructure holding parameters controlling how special line formats should be
+        -:  360:   *            treated.
+        -:  361:   */
+        -:  362:  struct LineReaderParams
+        -:  363:  {
+        -:  364:    /**
+        -:  365:     * @brief   Constructor
+        -:  366:     * @param   pSkipCommentLines     specifies whether to skip lines prefixed with
+        -:  367:     *                                mCommentPrefix. Default: false
+        -:  368:     * @param   pCommentPrefix        specifies which prefix character to indicate a comment
+        -:  369:     *                                line. Default: #
+        -:  370:     * @param   pSkipEmptyLines       specifies whether to skip empty lines. Default: false
+        -:  371:     */
+function _ZN8rapidcsv16LineReaderParamsC1Ebcb called 2 returned 100% blocks executed 100%
+function _ZN8rapidcsv16LineReaderParamsC2Ebcb called 2 returned 100% blocks executed 100%
+        -:  372:    explicit LineReaderParams(const bool pSkipCommentLines = false,
+        -:  373:                              const char pCommentPrefix = '#',
+        -:  374:                              const bool pSkipEmptyLines = false)
+        2:  375:      : mSkipCommentLines(pSkipCommentLines)
+        2:  376:      , mCommentPrefix(pCommentPrefix)
+        2:  377:      , mSkipEmptyLines(pSkipEmptyLines)
+        2:  378:    {
+        2:  379:    }
+        2:  379-block  0
+        2:  379-block  1
+        -:  380:
+        -:  381:    /**
+        -:  382:     * @brief   specifies whether to skip lines prefixed with mCommentPrefix.
+        -:  383:     */
+        -:  384:    bool mSkipCommentLines;
+        -:  385:
+        -:  386:    /**
+        -:  387:     * @brief   specifies which prefix character to indicate a comment line.
+        -:  388:     */
+        -:  389:    char mCommentPrefix;
+        -:  390:
+        -:  391:    /**
+        -:  392:     * @brief   specifies whether to skip empty lines.
+        -:  393:     */
+        -:  394:    bool mSkipEmptyLines;
+        -:  395:  };
+        -:  396:
+        -:  397:  /**
+        -:  398:   * @brief     Class representing a CSV document.
+        -:  399:   */
+function _ZN8rapidcsv8DocumentD1Ev called 2 returned 100% blocks executed 100%
+function _ZN8rapidcsv8DocumentD2Ev called 2 returned 100% blocks executed 100%
+        2:  400:  class Document
+        2:  400-block  0
+        2:  400-block  1
+        -:  401:  {
+        -:  402:  public:
+        -:  403:    /**
+        -:  404:     * @brief   Constructor
+        -:  405:     * @param   pPath                 specifies the path of an existing CSV-file to populate the Document
+        -:  406:     *                                data with.
+        -:  407:     * @param   pLabelParams          specifies which row and column should be treated as labels.
+        -:  408:     * @param   pSeparatorParams      specifies which field and row separators should be used.
+        -:  409:     * @param   pConverterParams      specifies how invalid numbers (including empty strings) should be
+        -:  410:     *                                handled.
+        -:  411:     * @param   pLineReaderParams     specifies how special line formats should be treated.
+        -:  412:     */
+function _ZN8rapidcsv8DocumentC1ERKNSt3__112basic_stringIcNS1_11char_traitsIcEENS1_9allocatorIcEEEERKNS_11LabelParamsERKNS_15SeparatorParamsERKNS_15ConverterParamsERKNS_16LineReaderParamsE called 2 returned 100% blocks executed 100%
+function _ZN8rapidcsv8DocumentC2ERKNSt3__112basic_stringIcNS1_11char_traitsIcEENS1_9allocatorIcEEEERKNS_11LabelParamsERKNS_15SeparatorParamsERKNS_15ConverterParamsERKNS_16LineReaderParamsE called 2 returned 100% blocks executed 71%
+        2:  413:    explicit Document(const std::string& pPath = std::string(),
+        -:  414:                      const LabelParams& pLabelParams = LabelParams(),
+        -:  415:                      const SeparatorParams& pSeparatorParams = SeparatorParams(),
+        -:  416:                      const ConverterParams& pConverterParams = ConverterParams(),
+        -:  417:                      const LineReaderParams& pLineReaderParams = LineReaderParams())
+        2:  418:      : mPath(pPath)
+        2:  419:      , mLabelParams(pLabelParams)
+        2:  420:      , mSeparatorParams(pSeparatorParams)
+        2:  421:      , mConverterParams(pConverterParams)
+        2:  422:      , mLineReaderParams(pLineReaderParams)
+        2:  423:    {
+        2:  424:      if (!mPath.empty())
+        2:  424-block  0
+branch  0 taken 100%
+branch  1 taken 0%
+        -:  425:      {
+        2:  426:        ReadCsv();
+        2:  426-block  0
+branch  0 taken 100%
+branch  1 taken 0%
+        2:  427:      }
+        2:  427-block  0
+        2:  428:    }
+        2:  428-block  0
+    $$$$$:  428-block  1
+        2:  428-block  2
+    $$$$$:  428-block  3
+        -:  429:
+        -:  430:    /**
+        -:  431:     * @brief   Constructor
+        -:  432:     * @param   pStream               specifies an input stream to read CSV data from.
+        -:  433:     * @param   pLabelParams          specifies which row and column should be treated as labels.
+        -:  434:     * @param   pSeparatorParams      specifies which field and row separators should be used.
+        -:  435:     * @param   pConverterParams      specifies how invalid numbers (including empty strings) should be
+        -:  436:     *                                handled.
+        -:  437:     * @param   pLineReaderParams     specifies how special line formats should be treated.
+        -:  438:     */
+        -:  439:    explicit Document(std::istream& pStream,
+        -:  440:                      const LabelParams& pLabelParams = LabelParams(),
+        -:  441:                      const SeparatorParams& pSeparatorParams = SeparatorParams(),
+        -:  442:                      const ConverterParams& pConverterParams = ConverterParams(),
+        -:  443:                      const LineReaderParams& pLineReaderParams = LineReaderParams())
+        -:  444:      : mPath()
+        -:  445:      , mLabelParams(pLabelParams)
+        -:  446:      , mSeparatorParams(pSeparatorParams)
+        -:  447:      , mConverterParams(pConverterParams)
+        -:  448:      , mLineReaderParams(pLineReaderParams)
+        -:  449:    {
+        -:  450:      ReadCsv(pStream);
+        -:  451:    }
+        -:  452:
+        -:  453:    /**
+        -:  454:     * @brief   Read Document data from file.
+        -:  455:     * @param   pPath                 specifies the path of an existing CSV-file to populate the Document
+        -:  456:     *                                data with.
+        -:  457:     * @param   pLabelParams          specifies which row and column should be treated as labels.
+        -:  458:     * @param   pSeparatorParams      specifies which field and row separators should be used.
+        -:  459:     * @param   pConverterParams      specifies how invalid numbers (including empty strings) should be
+        -:  460:     *                                handled.
+        -:  461:     * @param   pLineReaderParams     specifies how special line formats should be treated.
+        -:  462:     */
+        -:  463:    void Load(const std::string& pPath,
+        -:  464:              const LabelParams& pLabelParams = LabelParams(),
+        -:  465:              const SeparatorParams& pSeparatorParams = SeparatorParams(),
+        -:  466:              const ConverterParams& pConverterParams = ConverterParams(),
+        -:  467:              const LineReaderParams& pLineReaderParams = LineReaderParams())
+        -:  468:    {
+        -:  469:      mPath = pPath;
+        -:  470:      mLabelParams = pLabelParams;
+        -:  471:      mSeparatorParams = pSeparatorParams;
+        -:  472:      mConverterParams = pConverterParams;
+        -:  473:      mLineReaderParams = pLineReaderParams;
+        -:  474:      ReadCsv();
+        -:  475:    }
+        -:  476:
+        -:  477:    /**
+        -:  478:     * @brief   Read Document data from stream.
+        -:  479:     * @param   pStream               specifies an input stream to read CSV data from.
+        -:  480:     * @param   pLabelParams          specifies which row and column should be treated as labels.
+        -:  481:     * @param   pSeparatorParams      specifies which field and row separators should be used.
+        -:  482:     * @param   pConverterParams      specifies how invalid numbers (including empty strings) should be
+        -:  483:     *                                handled.
+        -:  484:     * @param   pLineReaderParams     specifies how special line formats should be treated.
+        -:  485:     */
+        -:  486:    void Load(std::istream& pStream,
+        -:  487:              const LabelParams& pLabelParams = LabelParams(),
+        -:  488:              const SeparatorParams& pSeparatorParams = SeparatorParams(),
+        -:  489:              const ConverterParams& pConverterParams = ConverterParams(),
+        -:  490:              const LineReaderParams& pLineReaderParams = LineReaderParams())
+        -:  491:    {
+        -:  492:      mPath = "";
+        -:  493:      mLabelParams = pLabelParams;
+        -:  494:      mSeparatorParams = pSeparatorParams;
+        -:  495:      mConverterParams = pConverterParams;
+        -:  496:      mLineReaderParams = pLineReaderParams;
+        -:  497:      ReadCsv(pStream);
+        -:  498:    }
+        -:  499:
+        -:  500:    /**
+        -:  501:     * @brief   Write Document data to file.
+        -:  502:     * @param   pPath                 optionally specifies the path where the CSV-file will be created
+        -:  503:     *                                (if not specified, the original path provided when creating or
+        -:  504:     *                                loading the Document data will be used).
+        -:  505:     */
+        -:  506:    void Save(const std::string& pPath = std::string())
+        -:  507:    {
+        -:  508:      if (!pPath.empty())
+        -:  509:      {
+        -:  510:        mPath = pPath;
+        -:  511:      }
+        -:  512:      WriteCsv();
+        -:  513:    }
+        -:  514:
+        -:  515:    /**
+        -:  516:     * @brief   Write Document data to stream.
+        -:  517:     * @param   pStream               specifies an output stream to write the data to.
+        -:  518:     */
+        -:  519:    void Save(std::ostream& pStream)
+        -:  520:    {
+        -:  521:      WriteCsv(pStream);
+        -:  522:    }
+        -:  523:
+        -:  524:    /**
+        -:  525:     * @brief   Clears loaded Document data.
+        -:  526:     *
+        -:  527:     */
+function _ZN8rapidcsv8Document5ClearEv called 2 returned 100% blocks executed 100%
+        -:  528:    void Clear()
+        -:  529:    {
+        2:  530:      mData.clear();
+        2:  531:      mColumnNames.clear();
+        2:  532:      mRowNames.clear();
+        -:  533:#ifdef HAS_CODECVT
+        -:  534:      mIsUtf16 = false;
+        -:  535:      mIsLE = false;
+        -:  536:#endif
+        2:  537:    }
+        2:  537-block  0
+        -:  538:
+        -:  539:    /**
+        -:  540:     * @brief   Get column index by name.
+        -:  541:     * @param   pColumnName           column label name.
+        -:  542:     * @returns zero-based column index.
+        -:  543:     */
+        -:  544:    ssize_t GetColumnIdx(const std::string& pColumnName) const
+        -:  545:    {
+        -:  546:      if (mLabelParams.mColumnNameIdx >= 0)
+        -:  547:      {
+        -:  548:        if (mColumnNames.find(pColumnName) != mColumnNames.end())
+        -:  549:        {
+        -:  550:          return mColumnNames.at(pColumnName) - (mLabelParams.mRowNameIdx + 1);
+        -:  551:        }
+        -:  552:      }
+        -:  553:      return -1;
+        -:  554:    }
+        -:  555:
+        -:  556:    /**
+        -:  557:     * @brief   Get column by index.
+        -:  558:     * @param   pColumnIdx            zero-based column index.
+        -:  559:     * @returns vector of column data.
+        -:  560:     */
+        -:  561:    template<typename T>
+        -:  562:    std::vector<T> GetColumn(const size_t pColumnIdx) const
+        -:  563:    {
+        -:  564:      const ssize_t columnIdx = pColumnIdx + (mLabelParams.mRowNameIdx + 1);
+        -:  565:      std::vector<T> column;
+        -:  566:      Converter<T> converter(mConverterParams);
+        -:  567:      for (auto itRow = mData.begin(); itRow != mData.end(); ++itRow)
+        -:  568:      {
+        -:  569:        if (std::distance(mData.begin(), itRow) > mLabelParams.mColumnNameIdx)
+        -:  570:        {
+        -:  571:          if (columnIdx < static_cast<ssize_t>(itRow->size()))
+        -:  572:          {
+        -:  573:            T val;
+        -:  574:            converter.ToVal(itRow->at(columnIdx), val);
+        -:  575:            column.push_back(val);
+        -:  576:          }
+        -:  577:          else
+        -:  578:          {
+        -:  579:            const std::string errStr = "requested column index " +
+        -:  580:              std::to_string(columnIdx - (mLabelParams.mRowNameIdx + 1)) + " >= " +
+        -:  581:              std::to_string(itRow->size() - (mLabelParams.mRowNameIdx + 1)) +
+        -:  582:              " (number of columns on row index " +
+        -:  583:              std::to_string(std::distance(mData.begin(), itRow) -
+        -:  584:                             (mLabelParams.mColumnNameIdx + 1)) + ")";
+        -:  585:            throw std::out_of_range(errStr);
+        -:  586:          }
+        -:  587:        }
+        -:  588:      }
+        -:  589:      return column;
+        -:  590:    }
+        -:  591:
+        -:  592:    /**
+        -:  593:     * @brief   Get column by index.
+        -:  594:     * @param   pColumnIdx            zero-based column index.
+        -:  595:     * @param   pToVal                conversion function.
+        -:  596:     * @returns vector of column data.
+        -:  597:     */
+        -:  598:    template<typename T>
+        -:  599:    std::vector<T> GetColumn(const size_t pColumnIdx, ConvFunc<T> pToVal) const
+        -:  600:    {
+        -:  601:      const ssize_t columnIdx = pColumnIdx + (mLabelParams.mRowNameIdx + 1);
+        -:  602:      std::vector<T> column;
+        -:  603:      for (auto itRow = mData.begin(); itRow != mData.end(); ++itRow)
+        -:  604:      {
+        -:  605:        if (std::distance(mData.begin(), itRow) > mLabelParams.mColumnNameIdx)
+        -:  606:        {
+        -:  607:          T val;
+        -:  608:          pToVal(itRow->at(columnIdx), val);
+        -:  609:          column.push_back(val);
+        -:  610:        }
+        -:  611:      }
+        -:  612:      return column;
+        -:  613:    }
+        -:  614:
+        -:  615:    /**
+        -:  616:     * @brief   Get column by name.
+        -:  617:     * @param   pColumnName           column label name.
+        -:  618:     * @returns vector of column data.
+        -:  619:     */
+        -:  620:    template<typename T>
+        -:  621:    std::vector<T> GetColumn(const std::string& pColumnName) const
+        -:  622:    {
+        -:  623:      const ssize_t columnIdx = GetColumnIdx(pColumnName);
+        -:  624:      if (columnIdx < 0)
+        -:  625:      {
+        -:  626:        throw std::out_of_range("column not found: " + pColumnName);
+        -:  627:      }
+        -:  628:      return GetColumn<T>(columnIdx);
+        -:  629:    }
+        -:  630:
+        -:  631:    /**
+        -:  632:     * @brief   Get column by name.
+        -:  633:     * @param   pColumnName           column label name.
+        -:  634:     * @param   pToVal                conversion function.
+        -:  635:     * @returns vector of column data.
+        -:  636:     */
+        -:  637:    template<typename T>
+        -:  638:    std::vector<T> GetColumn(const std::string& pColumnName, ConvFunc<T> pToVal) const
+        -:  639:    {
+        -:  640:      const ssize_t columnIdx = GetColumnIdx(pColumnName);
+        -:  641:      if (columnIdx < 0)
+        -:  642:      {
+        -:  643:        throw std::out_of_range("column not found: " + pColumnName);
+        -:  644:      }
+        -:  645:      return GetColumn<T>(columnIdx, pToVal);
+        -:  646:    }
+        -:  647:
+        -:  648:    /**
+        -:  649:     * @brief   Set column by index.
+        -:  650:     * @param   pColumnIdx            zero-based column index.
+        -:  651:     * @param   pColumn               vector of column data.
+        -:  652:     */
+        -:  653:    template<typename T>
+        -:  654:    void SetColumn(const size_t pColumnIdx, const std::vector<T>& pColumn)
+        -:  655:    {
+        -:  656:      const size_t columnIdx = pColumnIdx + (mLabelParams.mRowNameIdx + 1);
+        -:  657:
+        -:  658:      while (pColumn.size() + (mLabelParams.mColumnNameIdx + 1) > GetDataRowCount())
+        -:  659:      {
+        -:  660:        std::vector<std::string> row;
+        -:  661:        row.resize(GetDataColumnCount());
+        -:  662:        mData.push_back(row);
+        -:  663:      }
+        -:  664:
+        -:  665:      if ((columnIdx + 1) > GetDataColumnCount())
+        -:  666:      {
+        -:  667:        for (auto itRow = mData.begin(); itRow != mData.end(); ++itRow)
+        -:  668:        {
+        -:  669:          itRow->resize(columnIdx + 1 + (mLabelParams.mRowNameIdx + 1));
+        -:  670:        }
+        -:  671:      }
+        -:  672:
+        -:  673:      Converter<T> converter(mConverterParams);
+        -:  674:      for (auto itRow = pColumn.begin(); itRow != pColumn.end(); ++itRow)
+        -:  675:      {
+        -:  676:        std::string str;
+        -:  677:        converter.ToStr(*itRow, str);
+        -:  678:        mData.at(std::distance(pColumn.begin(), itRow) + (mLabelParams.mColumnNameIdx + 1)).at(columnIdx) = str;
+        -:  679:      }
+        -:  680:    }
+        -:  681:
+        -:  682:    /**
+        -:  683:     * @brief   Set column by name.
+        -:  684:     * @param   pColumnName           column label name.
+        -:  685:     * @param   pColumn               vector of column data.
+        -:  686:     */
+        -:  687:    template<typename T>
+        -:  688:    void SetColumn(const std::string& pColumnName, const std::vector<T>& pColumn)
+        -:  689:    {
+        -:  690:      const ssize_t columnIdx = GetColumnIdx(pColumnName);
+        -:  691:      if (columnIdx < 0)
+        -:  692:      {
+        -:  693:        throw std::out_of_range("column not found: " + pColumnName);
+        -:  694:      }
+        -:  695:      SetColumn<T>(columnIdx, pColumn);
+        -:  696:    }
+        -:  697:
+        -:  698:    /**
+        -:  699:     * @brief   Remove column by index.
+        -:  700:     * @param   pColumnIdx            zero-based column index.
+        -:  701:     */
+        -:  702:    void RemoveColumn(const size_t pColumnIdx)
+        -:  703:    {
+        -:  704:      const ssize_t columnIdx = pColumnIdx + (mLabelParams.mRowNameIdx + 1);
+        -:  705:      for (auto itRow = mData.begin(); itRow != mData.end(); ++itRow)
+        -:  706:      {
+        -:  707:        itRow->erase(itRow->begin() + columnIdx);
+        -:  708:      }
+        -:  709:    }
+        -:  710:
+        -:  711:    /**
+        -:  712:     * @brief   Remove column by name.
+        -:  713:     * @param   pColumnName           column label name.
+        -:  714:     */
+        -:  715:    void RemoveColumn(const std::string& pColumnName)
+        -:  716:    {
+        -:  717:      ssize_t columnIdx = GetColumnIdx(pColumnName);
+        -:  718:      if (columnIdx < 0)
+        -:  719:      {
+        -:  720:        throw std::out_of_range("column not found: " + pColumnName);
+        -:  721:      }
+        -:  722:
+        -:  723:      RemoveColumn(columnIdx);
+        -:  724:    }
+        -:  725:
+        -:  726:    /**
+        -:  727:     * @brief   Insert column at specified index.
+        -:  728:     * @param   pColumnIdx            zero-based column index.
+        -:  729:     * @param   pColumn               vector of column data (optional argument).
+        -:  730:     * @param   pColumnName           column label name (optional argument).
+        -:  731:     */
+        -:  732:    template<typename T>
+        -:  733:    void InsertColumn(const size_t pColumnIdx, const std::vector<T>& pColumn = std::vector<T>(),
+        -:  734:                      const std::string& pColumnName = std::string())
+        -:  735:    {
+        -:  736:      const size_t columnIdx = pColumnIdx + (mLabelParams.mRowNameIdx + 1);
+        -:  737:
+        -:  738:      std::vector<std::string> column;
+        -:  739:      if (pColumn.empty())
+        -:  740:      {
+        -:  741:        column.resize(GetDataRowCount());
+        -:  742:      }
+        -:  743:      else
+        -:  744:      {
+        -:  745:        column.resize(pColumn.size() + (mLabelParams.mColumnNameIdx + 1));
+        -:  746:        Converter<T> converter(mConverterParams);
+        -:  747:        for (auto itRow = pColumn.begin(); itRow != pColumn.end(); ++itRow)
+        -:  748:        {
+        -:  749:          std::string str;
+        -:  750:          converter.ToStr(*itRow, str);
+        -:  751:          const size_t rowIdx = std::distance(pColumn.begin(), itRow) + (mLabelParams.mColumnNameIdx + 1);
+        -:  752:          column.at(rowIdx) = str;
+        -:  753:        }
+        -:  754:      }
+        -:  755:
+        -:  756:      while (column.size() > GetDataRowCount())
+        -:  757:      {
+        -:  758:        std::vector<std::string> row;
+        -:  759:        const size_t columnCount = std::max(static_cast<size_t>(mLabelParams.mColumnNameIdx + 1),
+        -:  760:                                            GetDataColumnCount());
+        -:  761:        row.resize(columnCount);
+        -:  762:        mData.push_back(row);
+        -:  763:      }
+        -:  764:
+        -:  765:      for (auto itRow = mData.begin(); itRow != mData.end(); ++itRow)
+        -:  766:      {
+        -:  767:        const size_t rowIdx = std::distance(mData.begin(), itRow);
+        -:  768:        itRow->insert(itRow->begin() + columnIdx, column.at(rowIdx));
+        -:  769:      }
+        -:  770:
+        -:  771:      if (!pColumnName.empty())
+        -:  772:      {
+        -:  773:        SetColumnName(pColumnIdx, pColumnName);
+        -:  774:      }
+        -:  775:    }
+        -:  776:
+        -:  777:    /**
+        -:  778:     * @brief   Get number of data columns (excluding label columns).
+        -:  779:     * @returns column count.
+        -:  780:     */
+        -:  781:    size_t GetColumnCount() const
+        -:  782:    {
+        -:  783:      const ssize_t count = static_cast<ssize_t>((mData.size() > 0) ? mData.at(0).size() : 0) -
+        -:  784:        (mLabelParams.mRowNameIdx + 1);
+        -:  785:      return (count >= 0) ? count : 0;
+        -:  786:    }
+        -:  787:
+        -:  788:    /**
+        -:  789:     * @brief   Get row index by name.
+        -:  790:     * @param   pRowName              row label name.
+        -:  791:     * @returns zero-based row index.
+        -:  792:     */
+function _ZNK8rapidcsv8Document9GetRowIdxERKNSt3__112basic_stringIcNS1_11char_traitsIcEENS1_9allocatorIcEEEE called 14 returned 100% blocks executed 71%
+        -:  793:    ssize_t GetRowIdx(const std::string& pRowName) const
+        -:  794:    {
+       14:  795:      if (mLabelParams.mRowNameIdx >= 0)
+       14:  795-block  0
+branch  0 taken 100%
+branch  1 taken 0%
+        -:  796:      {
+       14:  797:        if (mRowNames.find(pRowName) != mRowNames.end())
+       14:  797-block  0
+branch  0 taken 100%
+branch  1 taken 0%
+        -:  798:        {
+       14:  799:          return mRowNames.at(pRowName) - (mLabelParams.mColumnNameIdx + 1);
+       14:  799-block  0
+        -:  800:        }
+    #####:  801:      }
+    $$$$$:  801-block  0
+    #####:  802:      return -1;
+    $$$$$:  802-block  0
+       14:  803:    }
+       14:  803-block  0
+        -:  804:
+        -:  805:    /**
+        -:  806:     * @brief   Get row by index.
+        -:  807:     * @param   pRowIdx               zero-based row index.
+        -:  808:     * @returns vector of row data.
+        -:  809:     */
+        -:  810:    template<typename T>
+function _ZNK8rapidcsv8Document6GetRowIfEENSt3__16vectorIT_NS2_9allocatorIS4_EEEEm called 14 returned 92% blocks executed 89%
+        -:  811:    std::vector<T> GetRow(const size_t pRowIdx) const
+        -:  812:    {
+       14:  813:      const ssize_t rowIdx = pRowIdx + (mLabelParams.mColumnNameIdx + 1);
+       14:  814:      std::vector<T> row;
+       14:  815:      Converter<T> converter(mConverterParams);
+       14:  815-block  0
+branch  0 taken 100%
+branch  1 taken 0%
+      185:  816:      for (auto itCol = mData.at(rowIdx).begin(); itCol != mData.at(rowIdx).end(); ++itCol)
+       14:  816-block  0
+branch  0 taken 100%
+branch  1 taken 0%
+       14:  816-block  1
+      185:  816-block  2
+branch  2 taken 100%
+branch  3 taken 0%
+      185:  816-block  3
+branch  4 taken 93%
+branch  5 taken 7%
+      171:  816-block  4
+        -:  817:      {
+      172:  818:        if (std::distance(mData.at(rowIdx).begin(), itCol) > mLabelParams.mRowNameIdx)
+      172:  818-block  0
+branch  0 taken 100%
+branch  1 taken 0%
+      172:  818-block  1
+branch  2 taken 100%
+branch  3 taken 0%
+      172:  818-block  2
+branch  4 taken 92%
+branch  5 taken 8%
+        -:  819:        {
+        -:  820:          T val;
+      158:  821:          converter.ToVal(*itCol, val);
+      158:  821-block  0
+branch  0 taken 99%
+branch  1 taken 1%
+      157:  822:          row.push_back(val);
+      157:  822-block  0
+branch  0 taken 100%
+branch  1 taken 0%
+      157:  823:        }
+      157:  823-block  0
+      171:  824:      }
+      171:  824-block  0
+       13:  825:      return row;
+       13:  826:    }
+        1:  826-block  0
+       13:  826-block  1
+branch  0 taken 0%
+branch  1 taken 100%
+    $$$$$:  826-block  2
+       13:  826-block  3
+        1:  826-block  4
+        -:  827:
+        -:  828:    /**
+        -:  829:     * @brief   Get row by index.
+        -:  830:     * @param   pRowIdx               zero-based row index.
+        -:  831:     * @param   pToVal                conversion function.
+        -:  832:     * @returns vector of row data.
+        -:  833:     */
+        -:  834:    template<typename T>
+        -:  835:    std::vector<T> GetRow(const size_t pRowIdx, ConvFunc<T> pToVal) const
+        -:  836:    {
+        -:  837:      const ssize_t rowIdx = pRowIdx + (mLabelParams.mColumnNameIdx + 1);
+        -:  838:      std::vector<T> row;
+        -:  839:      Converter<T> converter(mConverterParams);
+        -:  840:      for (auto itCol = mData.at(rowIdx).begin(); itCol != mData.at(rowIdx).end(); ++itCol)
+        -:  841:      {
+        -:  842:        if (std::distance(mData.at(rowIdx).begin(), itCol) > mLabelParams.mRowNameIdx)
+        -:  843:        {
+        -:  844:          T val;
+        -:  845:          pToVal(*itCol, val);
+        -:  846:          row.push_back(val);
+        -:  847:        }
+        -:  848:      }
+        -:  849:      return row;
+        -:  850:    }
+        -:  851:
+        -:  852:    /**
+        -:  853:     * @brief   Get row by name.
+        -:  854:     * @param   pRowName              row label name.
+        -:  855:     * @returns vector of row data.
+        -:  856:     */
+        -:  857:    template<typename T>
+function _ZNK8rapidcsv8Document6GetRowIfEENSt3__16vectorIT_NS2_9allocatorIS4_EEEERKNS2_12basic_stringIcNS2_11char_traitsIcEENS5_IcEEEE called 14 returned 100% blocks executed 23%
+        -:  858:    std::vector<T> GetRow(const std::string& pRowName) const
+        -:  859:    {
+       14:  860:      ssize_t rowIdx = GetRowIdx(pRowName);
+       14:  861:      if (rowIdx < 0)
+       14:  861-block  0
+branch  0 taken 0%
+branch  1 taken 100%
+        -:  862:      {
+    #####:  863:        throw std::out_of_range("row not found: " + pRowName);
+    $$$$$:  863-block  0
+branch  0 never executed
+branch  1 never executed
+    $$$$$:  863-block  1
+branch  2 never executed
+branch  3 never executed
+    $$$$$:  863-block  2
+branch  4 never executed
+branch  5 never executed
+    $$$$$:  863-block  3
+    $$$$$:  863-block  4
+branch  6 never executed
+branch  7 never executed
+    $$$$$:  863-block  5
+    $$$$$:  863-block  6
+    $$$$$:  863-block  7
+        -:  864:      }
+       14:  865:      return GetRow<T>(rowIdx);
+       14:  865-block  0
+    #####:  866:    }
+    $$$$$:  866-block  0
+        -:  867:
+        -:  868:    /**
+        -:  869:     * @brief   Get row by name.
+        -:  870:     * @param   pRowName              row label name.
+        -:  871:     * @param   pToVal                conversion function.
+        -:  872:     * @returns vector of row data.
+        -:  873:     */
+        -:  874:    template<typename T>
+        -:  875:    std::vector<T> GetRow(const std::string& pRowName, ConvFunc<T> pToVal) const
+        -:  876:    {
+        -:  877:      ssize_t rowIdx = GetRowIdx(pRowName);
+        -:  878:      if (rowIdx < 0)
+        -:  879:      {
+        -:  880:        throw std::out_of_range("row not found: " + pRowName);
+        -:  881:      }
+        -:  882:      return GetRow<T>(rowIdx, pToVal);
+        -:  883:    }
+        -:  884:
+        -:  885:    /**
+        -:  886:     * @brief   Set row by index.
+        -:  887:     * @param   pRowIdx               zero-based row index.
+        -:  888:     * @param   pRow                  vector of row data.
+        -:  889:     */
+        -:  890:    template<typename T>
+        -:  891:    void SetRow(const size_t pRowIdx, const std::vector<T>& pRow)
+        -:  892:    {
+        -:  893:      const size_t rowIdx = pRowIdx + (mLabelParams.mColumnNameIdx + 1);
+        -:  894:
+        -:  895:      while ((rowIdx + 1) > GetDataRowCount())
+        -:  896:      {
+        -:  897:        std::vector<std::string> row;
+        -:  898:        row.resize(GetDataColumnCount());
+        -:  899:        mData.push_back(row);
+        -:  900:      }
+        -:  901:
+        -:  902:      if (pRow.size() > GetDataColumnCount())
+        -:  903:      {
+        -:  904:        for (auto itRow = mData.begin(); itRow != mData.end(); ++itRow)
+        -:  905:        {
+        -:  906:          itRow->resize(pRow.size() + (mLabelParams.mRowNameIdx + 1));
+        -:  907:        }
+        -:  908:      }
+        -:  909:
+        -:  910:      Converter<T> converter(mConverterParams);
+        -:  911:      for (auto itCol = pRow.begin(); itCol != pRow.end(); ++itCol)
+        -:  912:      {
+        -:  913:        std::string str;
+        -:  914:        converter.ToStr(*itCol, str);
+        -:  915:        mData.at(rowIdx).at(std::distance(pRow.begin(), itCol) + (mLabelParams.mRowNameIdx + 1)) = str;
+        -:  916:      }
+        -:  917:    }
+        -:  918:
+        -:  919:    /**
+        -:  920:     * @brief   Set row by name.
+        -:  921:     * @param   pRowName              row label name.
+        -:  922:     * @param   pRow                  vector of row data.
+        -:  923:     */
+        -:  924:    template<typename T>
+        -:  925:    void SetRow(const std::string& pRowName, const std::vector<T>& pRow)
+        -:  926:    {
+        -:  927:      ssize_t rowIdx = GetRowIdx(pRowName);
+        -:  928:      if (rowIdx < 0)
+        -:  929:      {
+        -:  930:        throw std::out_of_range("row not found: " + pRowName);
+        -:  931:      }
+        -:  932:      return SetRow<T>(rowIdx, pRow);
+        -:  933:    }
+        -:  934:
+        -:  935:    /**
+        -:  936:     * @brief   Remove row by index.
+        -:  937:     * @param   pRowIdx               zero-based row index.
+        -:  938:     */
+        -:  939:    void RemoveRow(const size_t pRowIdx)
+        -:  940:    {
+        -:  941:      const ssize_t rowIdx = pRowIdx + (mLabelParams.mColumnNameIdx + 1);
+        -:  942:      mData.erase(mData.begin() + rowIdx);
+        -:  943:    }
+        -:  944:
+        -:  945:    /**
+        -:  946:     * @brief   Remove row by name.
+        -:  947:     * @param   pRowName              row label name.
+        -:  948:     */
+        -:  949:    void RemoveRow(const std::string& pRowName)
+        -:  950:    {
+        -:  951:      ssize_t rowIdx = GetRowIdx(pRowName);
+        -:  952:      if (rowIdx < 0)
+        -:  953:      {
+        -:  954:        throw std::out_of_range("row not found: " + pRowName);
+        -:  955:      }
+        -:  956:
+        -:  957:      RemoveRow(rowIdx);
+        -:  958:    }
+        -:  959:
+        -:  960:    /**
+        -:  961:     * @brief   Insert row at specified index.
+        -:  962:     * @param   pRowIdx               zero-based row index.
+        -:  963:     * @param   pRow                  vector of row data (optional argument).
+        -:  964:     * @param   pRowName              row label name (optional argument).
+        -:  965:     */
+        -:  966:    template<typename T>
+        -:  967:    void InsertRow(const size_t pRowIdx, const std::vector<T>& pRow = std::vector<T>(),
+        -:  968:                   const std::string& pRowName = std::string())
+        -:  969:    {
+        -:  970:      const size_t rowIdx = pRowIdx + (mLabelParams.mColumnNameIdx + 1);
+        -:  971:
+        -:  972:      std::vector<std::string> row;
+        -:  973:      if (pRow.empty())
+        -:  974:      {
+        -:  975:        row.resize(GetDataColumnCount());
+        -:  976:      }
+        -:  977:      else
+        -:  978:      {
+        -:  979:        row.resize(pRow.size() + (mLabelParams.mRowNameIdx + 1));
+        -:  980:        Converter<T> converter(mConverterParams);
+        -:  981:        for (auto itCol = pRow.begin(); itCol != pRow.end(); ++itCol)
+        -:  982:        {
+        -:  983:          std::string str;
+        -:  984:          converter.ToStr(*itCol, str);
+        -:  985:          row.at(std::distance(pRow.begin(), itCol) + (mLabelParams.mRowNameIdx + 1)) = str;
+        -:  986:        }
+        -:  987:      }
+        -:  988:
+        -:  989:      while (rowIdx > GetDataRowCount())
+        -:  990:      {
+        -:  991:        std::vector<std::string> tempRow;
+        -:  992:        tempRow.resize(GetDataColumnCount());
+        -:  993:        mData.push_back(tempRow);
+        -:  994:      }
+        -:  995:
+        -:  996:      mData.insert(mData.begin() + rowIdx, row);
+        -:  997:
+        -:  998:      if (!pRowName.empty())
+        -:  999:      {
+        -: 1000:        SetRowName(pRowIdx, pRowName);
+        -: 1001:      }
+        -: 1002:    }
+        -: 1003:
+        -: 1004:    /**
+        -: 1005:     * @brief   Get number of data rows (excluding label rows).
+        -: 1006:     * @returns row count.
+        -: 1007:     */
+        -: 1008:    size_t GetRowCount() const
+        -: 1009:    {
+        -: 1010:      const ssize_t count = static_cast<ssize_t>(mData.size()) - (mLabelParams.mColumnNameIdx + 1);
+        -: 1011:      return (count >= 0) ? count : 0;
+        -: 1012:    }
+        -: 1013:
+        -: 1014:    /**
+        -: 1015:     * @brief   Get cell by index.
+        -: 1016:     * @param   pColumnIdx            zero-based column index.
+        -: 1017:     * @param   pRowIdx               zero-based row index.
+        -: 1018:     * @returns cell data.
+        -: 1019:     */
+        -: 1020:    template<typename T>
+        -: 1021:    T GetCell(const size_t pColumnIdx, const size_t pRowIdx) const
+        -: 1022:    {
+        -: 1023:      const ssize_t columnIdx = pColumnIdx + (mLabelParams.mRowNameIdx + 1);
+        -: 1024:      const ssize_t rowIdx = pRowIdx + (mLabelParams.mColumnNameIdx + 1);
+        -: 1025:
+        -: 1026:      T val;
+        -: 1027:      Converter<T> converter(mConverterParams);
+        -: 1028:      converter.ToVal(mData.at(rowIdx).at(columnIdx), val);
+        -: 1029:      return val;
+        -: 1030:    }
+        -: 1031:
+        -: 1032:    /**
+        -: 1033:     * @brief   Get cell by index.
+        -: 1034:     * @param   pColumnIdx            zero-based column index.
+        -: 1035:     * @param   pRowIdx               zero-based row index.
+        -: 1036:     * @param   pToVal                conversion function.
+        -: 1037:     * @returns cell data.
+        -: 1038:     */
+        -: 1039:    template<typename T>
+        -: 1040:    T GetCell(const size_t pColumnIdx, const size_t pRowIdx, ConvFunc<T> pToVal) const
+        -: 1041:    {
+        -: 1042:      const ssize_t columnIdx = pColumnIdx + (mLabelParams.mRowNameIdx + 1);
+        -: 1043:      const ssize_t rowIdx = pRowIdx + (mLabelParams.mColumnNameIdx + 1);
+        -: 1044:
+        -: 1045:      T val;
+        -: 1046:      pToVal(mData.at(rowIdx).at(columnIdx), val);
+        -: 1047:      return val;
+        -: 1048:    }
+        -: 1049:
+        -: 1050:    /**
+        -: 1051:     * @brief   Get cell by name.
+        -: 1052:     * @param   pColumnName           column label name.
+        -: 1053:     * @param   pRowName              row label name.
+        -: 1054:     * @returns cell data.
+        -: 1055:     */
+        -: 1056:    template<typename T>
+        -: 1057:    T GetCell(const std::string& pColumnName, const std::string& pRowName) const
+        -: 1058:    {
+        -: 1059:      const ssize_t columnIdx = GetColumnIdx(pColumnName);
+        -: 1060:      if (columnIdx < 0)
+        -: 1061:      {
+        -: 1062:        throw std::out_of_range("column not found: " + pColumnName);
+        -: 1063:      }
+        -: 1064:
+        -: 1065:      const ssize_t rowIdx = GetRowIdx(pRowName);
+        -: 1066:      if (rowIdx < 0)
+        -: 1067:      {
+        -: 1068:        throw std::out_of_range("row not found: " + pRowName);
+        -: 1069:      }
+        -: 1070:
+        -: 1071:      return GetCell<T>(columnIdx, rowIdx);
+        -: 1072:    }
+        -: 1073:
+        -: 1074:    /**
+        -: 1075:     * @brief   Get cell by name.
+        -: 1076:     * @param   pColumnName           column label name.
+        -: 1077:     * @param   pRowName              row label name.
+        -: 1078:     * @param   pToVal                conversion function.
+        -: 1079:     * @returns cell data.
+        -: 1080:     */
+        -: 1081:    template<typename T>
+        -: 1082:    T GetCell(const std::string& pColumnName, const std::string& pRowName, ConvFunc<T> pToVal) const
+        -: 1083:    {
+        -: 1084:      const ssize_t columnIdx = GetColumnIdx(pColumnName);
+        -: 1085:      if (columnIdx < 0)
+        -: 1086:      {
+        -: 1087:        throw std::out_of_range("column not found: " + pColumnName);
+        -: 1088:      }
+        -: 1089:
+        -: 1090:      const ssize_t rowIdx = GetRowIdx(pRowName);
+        -: 1091:      if (rowIdx < 0)
+        -: 1092:      {
+        -: 1093:        throw std::out_of_range("row not found: " + pRowName);
+        -: 1094:      }
+        -: 1095:
+        -: 1096:      return GetCell<T>(columnIdx, rowIdx, pToVal);
+        -: 1097:    }
+        -: 1098:
+        -: 1099:    /**
+        -: 1100:     * @brief   Get cell by column name and row index.
+        -: 1101:     * @param   pColumnName           column label name.
+        -: 1102:     * @param   pRowIdx               zero-based row index.
+        -: 1103:     * @returns cell data.
+        -: 1104:     */
+        -: 1105:    template<typename T>
+        -: 1106:    T GetCell(const std::string& pColumnName, const size_t pRowIdx) const
+        -: 1107:    {
+        -: 1108:      const ssize_t columnIdx = GetColumnIdx(pColumnName);
+        -: 1109:      if (columnIdx < 0)
+        -: 1110:      {
+        -: 1111:        throw std::out_of_range("column not found: " + pColumnName);
+        -: 1112:      }
+        -: 1113:
+        -: 1114:      return GetCell<T>(columnIdx, pRowIdx);
+        -: 1115:    }
+        -: 1116:
+        -: 1117:    /**
+        -: 1118:     * @brief   Get cell by column name and row index.
+        -: 1119:     * @param   pColumnName           column label name.
+        -: 1120:     * @param   pRowIdx               zero-based row index.
+        -: 1121:     * @param   pToVal                conversion function.
+        -: 1122:     * @returns cell data.
+        -: 1123:     */
+        -: 1124:    template<typename T>
+        -: 1125:    T GetCell(const std::string& pColumnName, const size_t pRowIdx, ConvFunc<T> pToVal) const
+        -: 1126:    {
+        -: 1127:      const ssize_t columnIdx = GetColumnIdx(pColumnName);
+        -: 1128:      if (columnIdx < 0)
+        -: 1129:      {
+        -: 1130:        throw std::out_of_range("column not found: " + pColumnName);
+        -: 1131:      }
+        -: 1132:
+        -: 1133:      return GetCell<T>(columnIdx, pRowIdx, pToVal);
+        -: 1134:    }
+        -: 1135:
+        -: 1136:    /**
+        -: 1137:     * @brief   Get cell by column index and row name.
+        -: 1138:     * @param   pColumnIdx            zero-based column index.
+        -: 1139:     * @param   pRowName              row label name.
+        -: 1140:     * @returns cell data.
+        -: 1141:     */
+        -: 1142:    template<typename T>
+        -: 1143:    T GetCell(const size_t pColumnIdx, const std::string& pRowName) const
+        -: 1144:    {
+        -: 1145:      const ssize_t rowIdx = GetRowIdx(pRowName);
+        -: 1146:      if (rowIdx < 0)
+        -: 1147:      {
+        -: 1148:        throw std::out_of_range("row not found: " + pRowName);
+        -: 1149:      }
+        -: 1150:
+        -: 1151:      return GetCell<T>(pColumnIdx, rowIdx);
+        -: 1152:    }
+        -: 1153:
+        -: 1154:    /**
+        -: 1155:     * @brief   Get cell by column index and row name.
+        -: 1156:     * @param   pColumnIdx            zero-based column index.
+        -: 1157:     * @param   pRowName              row label name.
+        -: 1158:     * @param   pToVal                conversion function.
+        -: 1159:     * @returns cell data.
+        -: 1160:     */
+        -: 1161:    template<typename T>
+        -: 1162:    T GetCell(const size_t pColumnIdx, const std::string& pRowName, ConvFunc<T> pToVal) const
+        -: 1163:    {
+        -: 1164:      const ssize_t rowIdx = GetRowIdx(pRowName);
+        -: 1165:      if (rowIdx < 0)
+        -: 1166:      {
+        -: 1167:        throw std::out_of_range("row not found: " + pRowName);
+        -: 1168:      }
+        -: 1169:
+        -: 1170:      return GetCell<T>(pColumnIdx, rowIdx, pToVal);
+        -: 1171:    }
+        -: 1172:
+        -: 1173:    /**
+        -: 1174:     * @brief   Set cell by index.
+        -: 1175:     * @param   pRowIdx               zero-based row index.
+        -: 1176:     * @param   pColumnIdx            zero-based column index.
+        -: 1177:     * @param   pCell                 cell data.
+        -: 1178:     */
+        -: 1179:    template<typename T>
+        -: 1180:    void SetCell(const size_t pColumnIdx, const size_t pRowIdx, const T& pCell)
+        -: 1181:    {
+        -: 1182:      const size_t columnIdx = pColumnIdx + (mLabelParams.mRowNameIdx + 1);
+        -: 1183:      const size_t rowIdx = pRowIdx + (mLabelParams.mColumnNameIdx + 1);
+        -: 1184:
+        -: 1185:      while ((rowIdx + 1) > GetDataRowCount())
+        -: 1186:      {
+        -: 1187:        std::vector<std::string> row;
+        -: 1188:        row.resize(GetDataColumnCount());
+        -: 1189:        mData.push_back(row);
+        -: 1190:      }
+        -: 1191:
+        -: 1192:      if ((columnIdx + 1) > GetDataColumnCount())
+        -: 1193:      {
+        -: 1194:        for (auto itRow = mData.begin(); itRow != mData.end(); ++itRow)
+        -: 1195:        {
+        -: 1196:          itRow->resize(columnIdx + 1);
+        -: 1197:        }
+        -: 1198:      }
+        -: 1199:
+        -: 1200:      std::string str;
+        -: 1201:      Converter<T> converter(mConverterParams);
+        -: 1202:      converter.ToStr(pCell, str);
+        -: 1203:      mData.at(rowIdx).at(columnIdx) = str;
+        -: 1204:    }
+        -: 1205:
+        -: 1206:    /**
+        -: 1207:     * @brief   Set cell by name.
+        -: 1208:     * @param   pColumnName           column label name.
+        -: 1209:     * @param   pRowName              row label name.
+        -: 1210:     * @param   pCell                 cell data.
+        -: 1211:     */
+        -: 1212:    template<typename T>
+        -: 1213:    void SetCell(const std::string& pColumnName, const std::string& pRowName, const T& pCell)
+        -: 1214:    {
+        -: 1215:      const ssize_t columnIdx = GetColumnIdx(pColumnName);
+        -: 1216:      if (columnIdx < 0)
+        -: 1217:      {
+        -: 1218:        throw std::out_of_range("column not found: " + pColumnName);
+        -: 1219:      }
+        -: 1220:
+        -: 1221:      const ssize_t rowIdx = GetRowIdx(pRowName);
+        -: 1222:      if (rowIdx < 0)
+        -: 1223:      {
+        -: 1224:        throw std::out_of_range("row not found: " + pRowName);
+        -: 1225:      }
+        -: 1226:
+        -: 1227:      SetCell<T>(columnIdx, rowIdx, pCell);
+        -: 1228:    }
+        -: 1229:
+        -: 1230:    /**
+        -: 1231:     * @brief   Get column name
+        -: 1232:     * @param   pColumnIdx            zero-based column index.
+        -: 1233:     * @returns column name.
+        -: 1234:     */
+        -: 1235:    std::string GetColumnName(const ssize_t pColumnIdx)
+        -: 1236:    {
+        -: 1237:      const ssize_t columnIdx = pColumnIdx + (mLabelParams.mRowNameIdx + 1);
+        -: 1238:      if (mLabelParams.mColumnNameIdx < 0)
+        -: 1239:      {
+        -: 1240:        throw std::out_of_range("column name row index < 0: " + std::to_string(mLabelParams.mColumnNameIdx));
+        -: 1241:      }
+        -: 1242:
+        -: 1243:      return mData.at(mLabelParams.mColumnNameIdx).at(columnIdx);
+        -: 1244:    }
+        -: 1245:
+        -: 1246:    /**
+        -: 1247:     * @brief   Set column name
+        -: 1248:     * @param   pColumnIdx            zero-based column index.
+        -: 1249:     * @param   pColumnName           column name.
+        -: 1250:     */
+        -: 1251:    void SetColumnName(size_t pColumnIdx, const std::string& pColumnName)
+        -: 1252:    {
+        -: 1253:      const ssize_t columnIdx = pColumnIdx + (mLabelParams.mRowNameIdx + 1);
+        -: 1254:      mColumnNames[pColumnName] = columnIdx;
+        -: 1255:      if (mLabelParams.mColumnNameIdx < 0)
+        -: 1256:      {
+        -: 1257:        throw std::out_of_range("column name row index < 0: " + std::to_string(mLabelParams.mColumnNameIdx));
+        -: 1258:      }
+        -: 1259:
+        -: 1260:      // increase table size if necessary:
+        -: 1261:      const int rowIdx = mLabelParams.mColumnNameIdx;
+        -: 1262:      if (rowIdx >= static_cast<int>(mData.size()))
+        -: 1263:      {
+        -: 1264:        mData.resize(rowIdx + 1);
+        -: 1265:      }
+        -: 1266:      auto& row = mData[rowIdx];
+        -: 1267:      if (columnIdx >= static_cast<int>(row.size()))
+        -: 1268:      {
+        -: 1269:        row.resize(columnIdx + 1);
+        -: 1270:      }
+        -: 1271:
+        -: 1272:      mData.at(mLabelParams.mColumnNameIdx).at(columnIdx) = pColumnName;
+        -: 1273:    }
+        -: 1274:
+        -: 1275:    /**
+        -: 1276:     * @brief   Get column names
+        -: 1277:     * @returns vector of column names.
+        -: 1278:     */
+function _ZN8rapidcsv8Document14GetColumnNamesEv called 2 returned 100% blocks executed 80%
+        -: 1279:    std::vector<std::string> GetColumnNames()
+        -: 1280:    {
+        2: 1281:      if (mLabelParams.mColumnNameIdx >= 0)
+        2: 1281-block  0
+branch  0 taken 100%
+branch  1 taken 0%
+        -: 1282:      {
+        2: 1283:        return std::vector<std::string>(mData.at(mLabelParams.mColumnNameIdx).begin() +
+        2: 1283-block  0
+        2: 1283-block  1
+        2: 1283-block  2
+        2: 1284:                                        (mLabelParams.mRowNameIdx + 1),
+        2: 1285:                                        mData.at(mLabelParams.mColumnNameIdx).end());
+        -: 1286:      }
+        -: 1287:
+    #####: 1288:      return std::vector<std::string>();
+    $$$$$: 1288-block  0
+        2: 1289:    }
+        2: 1289-block  0
+        -: 1290:
+        -: 1291:    /**
+        -: 1292:     * @brief   Get row name
+        -: 1293:     * @param   pRowIdx               zero-based column index.
+        -: 1294:     * @returns row name.
+        -: 1295:     */
+        -: 1296:    std::string GetRowName(const ssize_t pRowIdx)
+        -: 1297:    {
+        -: 1298:      const ssize_t rowIdx = pRowIdx + (mLabelParams.mColumnNameIdx + 1);
+        -: 1299:      if (mLabelParams.mRowNameIdx < 0)
+        -: 1300:      {
+        -: 1301:        throw std::out_of_range("row name column index < 0: " + std::to_string(mLabelParams.mRowNameIdx));
+        -: 1302:      }
+        -: 1303:
+        -: 1304:      return mData.at(rowIdx).at(mLabelParams.mRowNameIdx);
+        -: 1305:    }
+        -: 1306:
+        -: 1307:    /**
+        -: 1308:     * @brief   Set row name
+        -: 1309:     * @param   pRowIdx               zero-based row index.
+        -: 1310:     * @param   pRowName              row name.
+        -: 1311:     */
+        -: 1312:    void SetRowName(size_t pRowIdx, const std::string& pRowName)
+        -: 1313:    {
+        -: 1314:      const ssize_t rowIdx = pRowIdx + (mLabelParams.mColumnNameIdx + 1);
+        -: 1315:      mRowNames[pRowName] = rowIdx;
+        -: 1316:      if (mLabelParams.mRowNameIdx < 0)
+        -: 1317:      {
+        -: 1318:        throw std::out_of_range("row name column index < 0: " + std::to_string(mLabelParams.mRowNameIdx));
+        -: 1319:      }
+        -: 1320:
+        -: 1321:      // increase table size if necessary:
+        -: 1322:      if (rowIdx >= static_cast<int>(mData.size()))
+        -: 1323:      {
+        -: 1324:        mData.resize(rowIdx + 1);
+        -: 1325:      }
+        -: 1326:      auto& row = mData[rowIdx];
+        -: 1327:      if (mLabelParams.mRowNameIdx >= static_cast<int>(row.size()))
+        -: 1328:      {
+        -: 1329:        row.resize(mLabelParams.mRowNameIdx + 1);
+        -: 1330:      }
+        -: 1331:
+        -: 1332:      mData.at(rowIdx).at(mLabelParams.mRowNameIdx) = pRowName;
+        -: 1333:    }
+        -: 1334:
+        -: 1335:    /**
+        -: 1336:     * @brief   Get row names
+        -: 1337:     * @returns vector of row names.
+        -: 1338:     */
+function _ZN8rapidcsv8Document11GetRowNamesEv called 2 returned 100% blocks executed 82%
+        -: 1339:    std::vector<std::string> GetRowNames()
+        -: 1340:    {
+        2: 1341:      std::vector<std::string> rownames;
+        2: 1342:      if (mLabelParams.mRowNameIdx >= 0)
+        2: 1342-block  0
+branch  0 taken 100%
+branch  1 taken 0%
+        -: 1343:      {
+       60: 1344:        for (auto itRow = mData.begin(); itRow != mData.end(); ++itRow)
+        2: 1344-block  0
+       60: 1344-block  1
+branch  0 taken 97%
+branch  1 taken 3%
+       58: 1344-block  2
+        -: 1345:        {
+       58: 1346:          if (std::distance(mData.begin(), itRow) > mLabelParams.mColumnNameIdx)
+       58: 1346-block  0
+branch  0 taken 100%
+branch  1 taken 0%
+       58: 1346-block  1
+branch  2 taken 97%
+branch  3 taken 3%
+        -: 1347:          {
+       56: 1348:            rownames.push_back(itRow->at(mLabelParams.mRowNameIdx));
+       56: 1348-block  0
+branch  0 taken 100%
+branch  1 taken 0%
+       56: 1348-block  1
+branch  2 taken 100%
+branch  3 taken 0%
+       56: 1349:          }
+       56: 1349-block  0
+       58: 1350:        }
+       58: 1350-block  0
+        2: 1351:      }
+        2: 1351-block  0
+        2: 1352:      return rownames;
+        2: 1353:    }
+    $$$$$: 1353-block  0
+        2: 1353-block  1
+branch  0 taken 0%
+branch  1 taken 100%
+    $$$$$: 1353-block  2
+        2: 1353-block  3
+    $$$$$: 1353-block  4
+        -: 1354:
+        -: 1355:  private:
+function _ZN8rapidcsv8Document7ReadCsvEv called 2 returned 100% blocks executed 71%
+        -: 1356:    void ReadCsv()
+        -: 1357:    {
+        2: 1358:      std::ifstream stream;
+        2: 1359:      stream.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+        2: 1359-block  0
+branch  0 taken 100%
+branch  1 taken 0%
+        2: 1360:      stream.open(mPath, std::ios::binary);
+        2: 1360-block  0
+branch  0 taken 100%
+branch  1 taken 0%
+        2: 1361:      ReadCsv(stream);
+        2: 1361-block  0
+branch  0 taken 100%
+branch  1 taken 0%
+        2: 1362:    }
+        2: 1362-block  0
+    $$$$$: 1362-block  1
+    $$$$$: 1362-block  2
+        -: 1363:
+function _ZN8rapidcsv8Document7ReadCsvERNSt3__113basic_istreamIcNS1_11char_traitsIcEEEE called 2 returned 100% blocks executed 72%
+        -: 1364:    void ReadCsv(std::istream& pStream)
+        -: 1365:    {
+        2: 1366:      Clear();
+        2: 1367:      pStream.seekg(0, std::ios::end);
+        2: 1368:      std::streamsize length = pStream.tellg();
+        2: 1369:      pStream.seekg(0, std::ios::beg);
+        -: 1370:
+        -: 1371:#ifdef HAS_CODECVT
+        -: 1372:      std::vector<char> bom2b(2, '\0');
+        -: 1373:      if (length >= 2)
+        -: 1374:      {
+        -: 1375:        pStream.read(bom2b.data(), 2);
+        -: 1376:        pStream.seekg(0, std::ios::beg);
+        -: 1377:      }
+        -: 1378:
+        -: 1379:      static const std::vector<char> bomU16le = { '\xff', '\xfe' };
+        -: 1380:      static const std::vector<char> bomU16be = { '\xfe', '\xff' };
+        -: 1381:      if ((bom2b == bomU16le) || (bom2b == bomU16be))
+        -: 1382:      {
+        -: 1383:        mIsUtf16 = true;
+        -: 1384:        mIsLE = (bom2b == bomU16le);
+        -: 1385:
+        -: 1386:        std::wifstream wstream;
+        -: 1387:        wstream.exceptions(std::wifstream::failbit | std::wifstream::badbit);
+        -: 1388:        wstream.open(mPath, std::ios::binary);
+        -: 1389:        if (mIsLE)
+        -: 1390:        {
+        -: 1391:          wstream.imbue(std::locale(wstream.getloc(),
+        -: 1392:                                    new std::codecvt_utf16<wchar_t, 0x10ffff,
+        -: 1393:                                                           static_cast<std::codecvt_mode>(std::consume_header |
+        -: 1394:                                                                                          std::little_endian)>));
+        -: 1395:        }
+        -: 1396:        else
+        -: 1397:        {
+        -: 1398:          wstream.imbue(std::locale(wstream.getloc(),
+        -: 1399:                                    new std::codecvt_utf16<wchar_t, 0x10ffff,
+        -: 1400:                                                           std::consume_header>));
+        -: 1401:        }
+        -: 1402:        std::wstringstream wss;
+        -: 1403:        wss << wstream.rdbuf();
+        -: 1404:        std::string utf8 = ToString(wss.str());
+        -: 1405:        std::stringstream ss(utf8);
+        -: 1406:        ParseCsv(ss, utf8.size());
+        -: 1407:      }
+        -: 1408:      else
+        -: 1409:#endif
+        -: 1410:      {
+        -: 1411:        // check for UTF-8 Byte order mark and skip it when found
+        2: 1412:        if (length >= 3)
+        2: 1412-block  0
+branch  0 taken 100%
+branch  1 taken 0%
+        -: 1413:        {
+        2: 1414:          std::vector<char> bom3b(3, '\0');
+        2: 1415:          pStream.read(bom3b.data(), 3);
+        2: 1415-block  0
+branch  0 taken 100%
+branch  1 taken 0%
+        2: 1416:          static const std::vector<char> bomU8 = { '\xef', '\xbb', '\xbf' };
+        2: 1416-block  0
+branch  0 taken 100%
+branch  1 taken 0%
+        2: 1416-block  1
+branch  2 taken 100%
+branch  3 taken 0%
+        2: 1416-block  2
+branch  4 taken 100%
+branch  5 taken 0%
+        2: 1416-block  3
+    $$$$$: 1416-block  4
+        2: 1417:          if (bom3b != bomU8)
+        2: 1417-block  0
+branch  0 taken 100%
+branch  1 taken 0%
+        2: 1417-block  1
+branch  2 taken 100%
+branch  3 taken 0%
+        -: 1418:          {
+        -: 1419:            // file does not start with a UTF-8 Byte order mark
+        2: 1420:            pStream.seekg(0, std::ios::beg);
+        2: 1420-block  0
+branch  0 taken 100%
+branch  1 taken 0%
+        2: 1421:          }
+        2: 1421-block  0
+        -: 1422:          else
+        -: 1423:          {
+        -: 1424:            // file did start with a UTF-8 Byte order mark, simply skip it
+    #####: 1425:            length -= 3;
+    $$$$$: 1425-block  0
+        -: 1426:          }
+        2: 1427:        }
+        2: 1427-block  0
+    $$$$$: 1427-block  1
+    $$$$$: 1427-block  2
+        -: 1428:
+        2: 1429:        ParseCsv(pStream, length);
+        -: 1430:      }
+        2: 1431:    }
+    $$$$$: 1431-block  0
+        2: 1431-block  1
+        -: 1432:
+function _ZN8rapidcsv8Document8ParseCsvERNSt3__113basic_istreamIcNS1_11char_traitsIcEEEEl called 2 returned 100% blocks executed 66%
+        -: 1433:    void ParseCsv(std::istream& pStream, std::streamsize p_FileLength)
+        -: 1434:    {
+        2: 1435:      const std::streamsize bufLength = 64 * 1024;
+        2: 1436:      std::vector<char> buffer(bufLength);
+        2: 1437:      std::vector<std::string> row;
+        2: 1438:      std::string cell;
+        2: 1439:      bool quoted = false;
+        2: 1440:      int cr = 0;
+        2: 1441:      int lf = 0;
+        -: 1442:
+        4: 1443:      while (p_FileLength > 0)
+        2: 1443-block  0
+        4: 1443-block  1
+branch  0 taken 50%
+branch  1 taken 50%
+        2: 1443-block  2
+        -: 1444:      {
+        2: 1445:        std::streamsize readLength = std::min<std::streamsize>(p_FileLength, bufLength);
+        2: 1445-block  0
+branch  0 taken 100%
+branch  1 taken 0%
+        2: 1446:        pStream.read(buffer.data(), readLength);
+        2: 1446-block  0
+branch  0 taken 100%
+branch  1 taken 0%
+     3685: 1447:        for (int i = 0; i < readLength; ++i)
+        2: 1447-block  0
+     3685: 1447-block  1
+branch  0 taken 99%
+branch  1 taken 1%
+     3683: 1447-block  2
+        -: 1448:        {
+     3683: 1449:          if (buffer[i] == '"')
+     3683: 1449-block  0
+branch  0 taken 100%
+branch  1 taken 0%
+     3683: 1449-block  1
+branch  2 taken 0%
+branch  3 taken 100%
+        -: 1450:          {
+    #####: 1451:            if (cell.empty() || cell[0] == '"')
+    $$$$$: 1451-block  0
+branch  0 never executed
+branch  1 never executed
+    $$$$$: 1451-block  1
+branch  2 never executed
+branch  3 never executed
+        -: 1452:            {
+    #####: 1453:              quoted = !quoted;
+    #####: 1454:            }
+    $$$$$: 1454-block  0
+    #####: 1455:            cell += buffer[i];
+    $$$$$: 1455-block  0
+branch  0 never executed
+branch  1 never executed
+    $$$$$: 1455-block  1
+branch  2 never executed
+branch  3 never executed
+    #####: 1456:          }
+    $$$$$: 1456-block  0
+     3683: 1457:          else if (buffer[i] == mSeparatorParams.mSeparator)
+     3683: 1457-block  0
+branch  0 taken 0%
+branch  1 taken 100%
+     3683: 1457-block  1
+branch  2 taken 19%
+branch  3 taken 81%
+        -: 1458:          {
+      688: 1459:            if (!quoted)
+      688: 1459-block  0
+branch  0 taken 100%
+branch  1 taken 0%
+        -: 1460:            {
+      688: 1461:              row.push_back(Unquote(Trim(cell)));
+      688: 1461-block  0
+branch  0 taken 0%
+branch  1 taken 100%
+      688: 1461-block  1
+branch  2 taken 100%
+branch  3 taken 0%
+      688: 1461-block  2
+branch  4 taken 100%
+branch  5 taken 0%
+    $$$$$: 1461-block  3
+    $$$$$: 1461-block  4
+      688: 1462:              cell.clear();
+      688: 1463:            }
+      688: 1463-block  0
+        -: 1464:            else
+        -: 1465:            {
+    #####: 1466:              cell += buffer[i];
+    $$$$$: 1466-block  0
+branch  0 never executed
+branch  1 never executed
+    $$$$$: 1466-block  1
+branch  2 never executed
+branch  3 never executed
+        -: 1467:            }
+      688: 1468:          }
+      688: 1468-block  0
+     2995: 1469:          else if (buffer[i] == '\r')
+     2995: 1469-block  0
+branch  0 taken 0%
+branch  1 taken 100%
+     2995: 1469-block  1
+branch  2 taken 0%
+branch  3 taken 100%
+        -: 1470:          {
+    #####: 1471:            if (mSeparatorParams.mQuotedLinebreaks && quoted)
+    $$$$$: 1471-block  0
+branch  0 never executed
+branch  1 never executed
+    $$$$$: 1471-block  1
+branch  2 never executed
+branch  3 never executed
+        -: 1472:            {
+    #####: 1473:              cell += buffer[i];
+    $$$$$: 1473-block  0
+branch  0 never executed
+branch  1 never executed
+    $$$$$: 1473-block  1
+branch  2 never executed
+branch  3 never executed
+    #####: 1474:            }
+    $$$$$: 1474-block  0
+        -: 1475:            else
+        -: 1476:            {
+    #####: 1477:              ++cr;
+    $$$$$: 1477-block  0
+        -: 1478:            }
+    #####: 1479:          }
+    $$$$$: 1479-block  0
+     2995: 1480:          else if (buffer[i] == '\n')
+     2995: 1480-block  0
+branch  0 taken 0%
+branch  1 taken 100%
+     2995: 1480-block  1
+branch  2 taken 2%
+branch  3 taken 98%
+        -: 1481:          {
+       62: 1482:            if (mSeparatorParams.mQuotedLinebreaks && quoted)
+       62: 1482-block  0
+branch  0 taken 0%
+branch  1 taken 100%
+    $$$$$: 1482-block  1
+branch  2 never executed
+branch  3 never executed
+        -: 1483:            {
+    #####: 1484:              cell += buffer[i];
+    $$$$$: 1484-block  0
+branch  0 never executed
+branch  1 never executed
+    $$$$$: 1484-block  1
+branch  2 never executed
+branch  3 never executed
+    #####: 1485:            }
+    $$$$$: 1485-block  0
+        -: 1486:            else
+        -: 1487:            {
+       62: 1488:              ++lf;
+       62: 1489:              if (mLineReaderParams.mSkipEmptyLines && row.empty() && cell.empty())
+       62: 1489-block  0
+branch  0 taken 100%
+branch  1 taken 0%
+       62: 1489-block  1
+branch  2 taken 5%
+branch  3 taken 95%
+        3: 1489-block  2
+branch  4 taken 33%
+branch  5 taken 67%
+        -: 1490:              {
+        -: 1491:                // skip empty line
+        1: 1492:              }
+        1: 1492-block  0
+        -: 1493:              else
+        -: 1494:              {
+       61: 1495:                row.push_back(Unquote(Trim(cell)));
+       61: 1495-block  0
+branch  0 taken 0%
+branch  1 taken 100%
+       61: 1495-block  1
+branch  2 taken 100%
+branch  3 taken 0%
+       61: 1495-block  2
+branch  4 taken 100%
+branch  5 taken 0%
+    $$$$$: 1495-block  3
+    $$$$$: 1495-block  4
+        -: 1496:
+       61: 1497:                if (mLineReaderParams.mSkipCommentLines && !row.at(0).empty() &&
+       61: 1497-block  0
+branch  0 taken 100%
+branch  1 taken 0%
+       61: 1497-block  1
+branch  2 taken 0%
+branch  3 taken 100%
+       61: 1497-block  2
+branch  4 taken 100%
+branch  5 taken 0%
+       61: 1497-block  3
+branch  6 taken 5%
+branch  7 taken 95%
+       61: 1498:                    (row.at(0)[0] == mLineReaderParams.mCommentPrefix))
+       61: 1498-block  0
+branch  0 taken 0%
+branch  1 taken 100%
+        -: 1499:                {
+        -: 1500:                  // skip comment line
+        3: 1501:                }
+        3: 1501-block  0
+        -: 1502:                else
+        -: 1503:                {
+       58: 1504:                  mData.push_back(row);
+       58: 1504-block  0
+branch  0 taken 0%
+branch  1 taken 100%
+        -: 1505:                }
+        -: 1506:
+       61: 1507:                cell.clear();
+       61: 1508:                row.clear();
+       61: 1509:                quoted = false;
+       61: 1509-block  0
+        -: 1510:              }
+        -: 1511:            }
+       62: 1512:          }
+       62: 1512-block  0
+        -: 1513:          else
+        -: 1514:          {
+     2933: 1515:            cell += buffer[i];
+     2933: 1515-block  0
+branch  0 taken 0%
+branch  1 taken 100%
+     2933: 1515-block  1
+branch  2 taken 0%
+branch  3 taken 100%
+        -: 1516:          }
+     3683: 1517:        }
+     3683: 1517-block  0
+        2: 1518:        p_FileLength -= readLength;
+        -: 1519:      }
+        -: 1520:
+        -: 1521:      // Handle last line without linebreak
+        2: 1522:      if (!cell.empty() || !row.empty())
+        2: 1522-block  0
+branch  0 taken 100%
+branch  1 taken 0%
+        2: 1522-block  1
+branch  2 taken 0%
+branch  3 taken 100%
+        -: 1523:      {
+    #####: 1524:        row.push_back(Unquote(Trim(cell)));
+    $$$$$: 1524-block  0
+branch  0 never executed
+branch  1 never executed
+    $$$$$: 1524-block  1
+branch  2 never executed
+branch  3 never executed
+    $$$$$: 1524-block  2
+branch  4 never executed
+branch  5 never executed
+    $$$$$: 1524-block  3
+    $$$$$: 1524-block  4
+    #####: 1525:        cell.clear();
+    #####: 1526:        mData.push_back(row);
+    $$$$$: 1526-block  0
+branch  0 never executed
+branch  1 never executed
+    #####: 1527:        row.clear();
+    #####: 1528:      }
+    $$$$$: 1528-block  0
+        -: 1529:
+        -: 1530:      // Assume CR/LF if at least half the linebreaks have CR
+        2: 1531:      mSeparatorParams.mHasCR = (cr > (lf / 2));
+        -: 1532:
+        -: 1533:      // Set up column labels
+        2: 1534:      if ((mLabelParams.mColumnNameIdx >= 0) &&
+        2: 1534-block  0
+branch  0 taken 100%
+branch  1 taken 0%
+        2: 1534-block  1
+branch  2 taken 100%
+branch  3 taken 0%
+        2: 1535:          (static_cast<ssize_t>(mData.size()) > mLabelParams.mColumnNameIdx))
+        -: 1536:      {
+        2: 1537:        int i = 0;
+       29: 1538:        for (auto& columnName : mData[mLabelParams.mColumnNameIdx])
+        2: 1538-block  0
+branch  0 taken 0%
+branch  1 taken 100%
+        2: 1538-block  1
+       29: 1538-block  2
+branch  2 taken 93%
+branch  3 taken 7%
+       27: 1538-block  3
+       27: 1538-block  4
+        -: 1539:        {
+       27: 1540:          mColumnNames[columnName] = i++;
+       27: 1540-block  0
+branch  0 taken 0%
+branch  1 taken 100%
+        -: 1541:        }
+        2: 1542:      }
+        2: 1542-block  0
+        -: 1543:
+        -: 1544:      // Set up row labels
+        2: 1545:      if ((mLabelParams.mRowNameIdx >= 0) &&
+        2: 1545-block  0
+branch  0 taken 100%
+branch  1 taken 0%
+        2: 1545-block  1
+branch  2 taken 100%
+branch  3 taken 0%
+        2: 1546:          (static_cast<ssize_t>(mData.size()) >
+        2: 1547:           (mLabelParams.mColumnNameIdx + 1)))
+        -: 1548:      {
+        2: 1549:        int i = 0;
+       60: 1550:        for (auto& dataRow : mData)
+        2: 1550-block  0
+       60: 1550-block  1
+branch  0 taken 97%
+branch  1 taken 3%
+       58: 1550-block  2
+       58: 1550-block  3
+        -: 1551:        {
+       58: 1552:          if (static_cast<ssize_t>(dataRow.size()) > mLabelParams.mRowNameIdx)
+       58: 1552-block  0
+branch  0 taken 100%
+branch  1 taken 0%
+        -: 1553:          {
+       58: 1554:            mRowNames[dataRow[mLabelParams.mRowNameIdx]] = i++;
+       58: 1554-block  0
+branch  0 taken 0%
+branch  1 taken 100%
+       58: 1554-block  1
+branch  2 taken 0%
+branch  3 taken 100%
+       58: 1555:          }
+       58: 1555-block  0
+        -: 1556:        }
+        2: 1557:      }
+        2: 1557-block  0
+        2: 1558:    }
+    $$$$$: 1558-block  0
+    $$$$$: 1558-block  1
+    $$$$$: 1558-block  2
+    $$$$$: 1558-block  3
+        2: 1558-block  4
+    $$$$$: 1558-block  5
+    $$$$$: 1558-block  6
+        -: 1559:
+        -: 1560:    void WriteCsv() const
+        -: 1561:    {
+        -: 1562:#ifdef HAS_CODECVT
+        -: 1563:      if (mIsUtf16)
+        -: 1564:      {
+        -: 1565:        std::stringstream ss;
+        -: 1566:        WriteCsv(ss);
+        -: 1567:        std::string utf8 = ss.str();
+        -: 1568:        std::wstring wstr = ToWString(utf8);
+        -: 1569:
+        -: 1570:        std::wofstream wstream;
+        -: 1571:        wstream.exceptions(std::wofstream::failbit | std::wofstream::badbit);
+        -: 1572:        wstream.open(mPath, std::ios::binary | std::ios::trunc);
+        -: 1573:
+        -: 1574:        if (mIsLE)
+        -: 1575:        {
+        -: 1576:          wstream.imbue(std::locale(wstream.getloc(),
+        -: 1577:                                    new std::codecvt_utf16<wchar_t, 0x10ffff,
+        -: 1578:                                                           static_cast<std::codecvt_mode>(std::little_endian)>));
+        -: 1579:        }
+        -: 1580:        else
+        -: 1581:        {
+        -: 1582:          wstream.imbue(std::locale(wstream.getloc(),
+        -: 1583:                                    new std::codecvt_utf16<wchar_t, 0x10ffff>));
+        -: 1584:        }
+        -: 1585:
+        -: 1586:        wstream << static_cast<wchar_t>(0xfeff);
+        -: 1587:        wstream << wstr;
+        -: 1588:      }
+        -: 1589:      else
+        -: 1590:#endif
+        -: 1591:      {
+        -: 1592:        std::ofstream stream;
+        -: 1593:        stream.exceptions(std::ofstream::failbit | std::ofstream::badbit);
+        -: 1594:        stream.open(mPath, std::ios::binary | std::ios::trunc);
+        -: 1595:        WriteCsv(stream);
+        -: 1596:      }
+        -: 1597:    }
+        -: 1598:
+        -: 1599:    void WriteCsv(std::ostream& pStream) const
+        -: 1600:    {
+        -: 1601:      for (auto itr = mData.begin(); itr != mData.end(); ++itr)
+        -: 1602:      {
+        -: 1603:        for (auto itc = itr->begin(); itc != itr->end(); ++itc)
+        -: 1604:        {
+        -: 1605:          if (mSeparatorParams.mAutoQuote &&
+        -: 1606:              ((itc->find(mSeparatorParams.mSeparator) != std::string::npos) ||
+        -: 1607:               (itc->find(' ') != std::string::npos)))
+        -: 1608:          {
+        -: 1609:            // escape quotes in string
+        -: 1610:            std::string str = *itc;
+        -: 1611:            ReplaceString(str, "\"", "\"\"");
+        -: 1612:
+        -: 1613:            pStream << "\"" << str << "\"";
+        -: 1614:          }
+        -: 1615:          else
+        -: 1616:          {
+        -: 1617:            pStream << *itc;
+        -: 1618:          }
+        -: 1619:
+        -: 1620:          if (std::distance(itc, itr->end()) > 1)
+        -: 1621:          {
+        -: 1622:            pStream << mSeparatorParams.mSeparator;
+        -: 1623:          }
+        -: 1624:        }
+        -: 1625:        pStream << (mSeparatorParams.mHasCR ? "\r\n" : "\n");
+        -: 1626:      }
+        -: 1627:    }
+        -: 1628:
+        -: 1629:    size_t GetDataRowCount() const
+        -: 1630:    {
+        -: 1631:      return mData.size();
+        -: 1632:    }
+        -: 1633:
+        -: 1634:    size_t GetDataColumnCount() const
+        -: 1635:    {
+        -: 1636:      return (mData.size() > 0) ? mData.at(0).size() : 0;
+        -: 1637:    }
+        -: 1638:
+function _ZN8rapidcsv8Document4TrimERKNSt3__112basic_stringIcNS1_11char_traitsIcEENS1_9allocatorIcEEEE called 749 returned 100% blocks executed 28%
+        -: 1639:    std::string Trim(const std::string& pStr)
+        -: 1640:    {
+      749: 1641:      if (mSeparatorParams.mTrim)
+      749: 1641-block  0
+branch  0 taken 0%
+branch  1 taken 100%
+        -: 1642:      {
+    #####: 1643:        std::string str = pStr;
+        -: 1644:
+        -: 1645:        // ltrim
+function _ZZN8rapidcsv8Document4TrimERKNSt3__112basic_stringIcNS1_11char_traitsIcEENS1_9allocatorIcEEEEENKUliE_clEi called 0 returned 0% blocks executed 0%
+    #####: 1646:        str.erase(str.begin(), std::find_if(str.begin(), str.end(), [](int ch) { return !isspace(ch); }));
+    $$$$$: 1646-block  0
+branch  0 never executed
+branch  1 never executed
+    $$$$$: 1646-block  1
+branch  2 never executed
+branch  3 never executed
+    $$$$$: 1646-block  2
+        -: 1647:
+        -: 1648:        // rtrim
+function _ZZN8rapidcsv8Document4TrimERKNSt3__112basic_stringIcNS1_11char_traitsIcEENS1_9allocatorIcEEEEENKUliE0_clEi called 0 returned 0% blocks executed 0%
+    #####: 1649:        str.erase(std::find_if(str.rbegin(), str.rend(), [](int ch) { return !isspace(ch); }).base(), str.end());
+    $$$$$: 1649-block  0
+branch  0 never executed
+branch  1 never executed
+    $$$$$: 1649-block  1
+branch  2 never executed
+branch  3 never executed
+    $$$$$: 1649-block  2
+branch  4 never executed
+branch  5 never executed
+    $$$$$: 1649-block  3
+        -: 1650:
+    #####: 1651:        return str;
+    #####: 1652:      }
+    $$$$$: 1652-block  0
+branch  0 never executed
+branch  1 never executed
+    $$$$$: 1652-block  1
+    $$$$$: 1652-block  2
+    $$$$$: 1652-block  3
+        -: 1653:      else
+        -: 1654:      {
+      749: 1655:        return pStr;
+      749: 1655-block  0
+        -: 1656:      }
+      749: 1657:    }
+      749: 1657-block  0
+        -: 1658:
+function _ZN8rapidcsv8Document7UnquoteERKNSt3__112basic_stringIcNS1_11char_traitsIcEENS1_9allocatorIcEEEE called 749 returned 100% blocks executed 31%
+        -: 1659:    std::string Unquote(const std::string& pStr)
+        -: 1660:    {
+      749: 1661:      if (mSeparatorParams.mAutoQuote && (pStr.size() >= 2) && (pStr.front() == '"') && (pStr.back() == '"'))
+      749: 1661-block  0
+branch  0 taken 100%
+branch  1 taken 0%
+      749: 1661-block  1
+branch  2 taken 100%
+branch  3 taken 0%
+      749: 1661-block  2
+branch  4 taken 0%
+branch  5 taken 100%
+    $$$$$: 1661-block  3
+branch  6 never executed
+branch  7 never executed
+        -: 1662:      {
+        -: 1663:        // remove start/end quotes
+    #####: 1664:        std::string str = pStr.substr(1, pStr.size() - 2);
+        -: 1665:
+        -: 1666:        // unescape quotes in string
+    #####: 1667:        ReplaceString(str, "\"\"", "\"");
+    $$$$$: 1667-block  0
+branch  0 never executed
+branch  1 never executed
+    $$$$$: 1667-block  1
+branch  2 never executed
+branch  3 never executed
+    $$$$$: 1667-block  2
+branch  4 never executed
+branch  5 never executed
+    $$$$$: 1667-block  3
+    $$$$$: 1667-block  4
+        -: 1668:
+    #####: 1669:        return str;
+    #####: 1670:      }
+    $$$$$: 1670-block  0
+branch  0 never executed
+branch  1 never executed
+    $$$$$: 1670-block  1
+    $$$$$: 1670-block  2
+    $$$$$: 1670-block  3
+        -: 1671:      else
+        -: 1672:      {
+      749: 1673:        return pStr;
+      749: 1673-block  0
+        -: 1674:      }
+      749: 1675:    }
+    $$$$$: 1675-block  0
+    $$$$$: 1675-block  1
+      749: 1675-block  2
+        -: 1676:
+        -: 1677:#ifdef HAS_CODECVT
+        -: 1678:#if defined(_MSC_VER)
+        -: 1679:#pragma warning (disable: 4996)
+        -: 1680:#endif
+        -: 1681:    static std::string ToString(const std::wstring& pWStr)
+        -: 1682:    {
+        -: 1683:      return std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t>{ }.to_bytes(pWStr);
+        -: 1684:    }
+        -: 1685:
+        -: 1686:    static std::wstring ToWString(const std::string& pStr)
+        -: 1687:    {
+        -: 1688:      return std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t>{ }.from_bytes(pStr);
+        -: 1689:    }
+        -: 1690:#if defined(_MSC_VER)
+        -: 1691:#pragma warning (default: 4996)
+        -: 1692:#endif
+        -: 1693:#endif
+        -: 1694:
+function _ZN8rapidcsv8Document13ReplaceStringERNSt3__112basic_stringIcNS1_11char_traitsIcEENS1_9allocatorIcEEEERKS7_SA_ called 0 returned 0% blocks executed 0%
+        -: 1695:    static void ReplaceString(std::string& pStr, const std::string& pSearch, const std::string& pReplace)
+        -: 1696:    {
+    #####: 1697:      size_t pos = 0;
+        -: 1698:
+    #####: 1699:      while ((pos = pStr.find(pSearch, pos)) != std::string::npos)
+    $$$$$: 1699-block  0
+    $$$$$: 1699-block  1
+branch  0 never executed
+branch  1 never executed
+    $$$$$: 1699-block  2
+        -: 1700:      {
+    #####: 1701:        pStr.replace(pos, pSearch.size(), pReplace);
+    #####: 1702:        pos += pReplace.size();
+        -: 1703:      }
+    #####: 1704:    }
+    $$$$$: 1704-block  0
+        -: 1705:
+        -: 1706:  private:
+        -: 1707:    std::string mPath;
+        -: 1708:    LabelParams mLabelParams;
+        -: 1709:    SeparatorParams mSeparatorParams;
+        -: 1710:    ConverterParams mConverterParams;
+        -: 1711:    LineReaderParams mLineReaderParams;
+        -: 1712:    std::vector<std::vector<std::string>> mData;
+        -: 1713:    std::map<std::string, size_t> mColumnNames;
+        -: 1714:    std::map<std::string, size_t> mRowNames;
+        -: 1715:#ifdef HAS_CODECVT
+        -: 1716:    bool mIsUtf16 = false;
+        -: 1717:    bool mIsLE = false;
+        -: 1718:#endif
+        -: 1719:  };
+        -: 1720:}
