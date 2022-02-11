@@ -10,4 +10,4 @@ Sample files from data/ dir can be used.
 Usage example:
 >make
 
->make run filename=data/budget.csv
+>make run filename=data/expenses.csv
