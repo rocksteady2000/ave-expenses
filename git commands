@@ -1,0 +1,112 @@
+Sunil-Reddys-MacBook-Pro:expenses-cpp-repo raksha$ pwd
+/Users/raksha/Projects/expenses-cpp-repo
+Sunil-Reddys-MacBook-Pro:expenses-cpp-repo raksha$ git init
+Initialized empty Git repository in /Users/raksha/Projects/expenses-cpp-repo/.git/
+Sunil-Reddys-MacBook-Pro:expenses-cpp-repo raksha$ git add .
+Sunil-Reddys-MacBook-Pro:expenses-cpp-repo raksha$ git commit -m "Setting up new git repo"
+[master (root-commit) 1436046] Setting up new git repo
+ Committer: Rocky <raksha@Sunil-Reddys-MacBook-Pro.local>
+Your name and email address were configured automatically based
+on your username and hostname. Please check that they are accurate.
+You can suppress this message by setting them explicitly:
+
+    git config --global user.name "Your Name"
+    git config --global user.email you@example.com
+
+After doing this, you may fix the identity used for this commit with:
+
+    git commit --amend --reset-author
+
+ 11 files changed, 5814 insertions(+)
+ create mode 100644 bin/expenses
+ create mode 100644 build/expenses.gcno
+ create mode 100644 build/expenses.o
+ create mode 100644 data/expenses.csv
+ create mode 100644 data/expenses_incorrect_header.csv
+ create mode 100644 include/rapidcsv.h
+ create mode 100644 src/coverage.info
+ create mode 100644 src/expenses.cpp
+ create mode 100644 src/newexpenses.gcda
+ create mode 100644 src/newexpenses.gcno
+ create mode 100644 src/oldexpenses.cpp
+Sunil-Reddys-MacBook-Pro:expenses-cpp-repo raksha$ git branch test
+Sunil-Reddys-MacBook-Pro:expenses-cpp-repo raksha$ git branch -a
+* master
+  test
+Sunil-Reddys-MacBook-Pro:expenses-cpp-repo raksha$ git checkout test
+Switched to branch 'test'
+Sunil-Reddys-MacBook-Pro:expenses-cpp-repo raksha$ git status
+On branch test
+nothing to commit, working tree clean
+Sunil-Reddys-MacBook-Pro:expenses-cpp-repo raksha$ cd src/
+Sunil-Reddys-MacBook-Pro:src raksha$ vim expenses.cpp 
+Sunil-Reddys-MacBook-Pro:src raksha$ cd ..
+Sunil-Reddys-MacBook-Pro:expenses-cpp-repo raksha$ ls
+bin	build	data	include	src
+Sunil-Reddys-MacBook-Pro:expenses-cpp-repo raksha$ vim makefile
+Sunil-Reddys-MacBook-Pro:expenses-cpp-repo raksha$ make
+gcc -Wall -std=c++2a  -c  -o build/expenses.o src/expenses.cpp
+gcc -fprofile-arcs -ftest-coverage -lstdc++ build/expenses.o -o bin/expenses
+Sunil-Reddys-MacBook-Pro:expenses-cpp-repo raksha$ make run filename=data/expenses.csv 
+./bin/expenses data/expenses.csv
+Average monthly expense for groceries is $429.67
+Average monthly expense for rent is $1500.00
+Average monthly expense for electricity is $213.83
+Average monthly expense for phone is $50.00
+Average monthly expense for gas is $149.00
+Average monthly expense for entertainment is $576.92
+Total monthly average cost for all expenses is $ 2919.42.
+Sunil-Reddys-MacBook-Pro:expenses-cpp-repo raksha$ git status
+On branch test
+Changes not staged for commit:
+  (use "git add/rm <file>..." to update what will be committed)
+  (use "git checkout -- <file>..." to discard changes in working directory)
+
+	modified:   bin/expenses
+	deleted:    build/expenses.gcno
+	deleted:    src/coverage.info
+	deleted:    src/newexpenses.gcda
+	deleted:    src/newexpenses.gcno
+	deleted:    src/oldexpenses.cpp
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+
+	makefile
+
+no changes added to commit (use "git add" and/or "git commit -a")
+Sunil-Reddys-MacBook-Pro:expenses-cpp-repo raksha$ git add makefile 
+Sunil-Reddys-MacBook-Pro:expenses-cpp-repo raksha$ git commit -m "updated program and added makefile"
+[test 706fd6d] updated program and added makefile
+ Committer: Rocky <raksha@Sunil-Reddys-MacBook-Pro.local>
+Your name and email address were configured automatically based
+on your username and hostname. Please check that they are accurate.
+You can suppress this message by setting them explicitly:
+
+    git config --global user.name "Your Name"
+    git config --global user.email you@example.com
+
+After doing this, you may fix the identity used for this commit with:
+
+    git commit --amend --reset-author
+
+ 1 file changed, 21 insertions(+)
+ create mode 100644 makefile
+Sunil-Reddys-MacBook-Pro:expenses-cpp-repo raksha$ git checkout master
+M	bin/expenses
+D	build/expenses.gcno
+D	src/coverage.info
+D	src/newexpenses.gcda
+D	src/newexpenses.gcno
+D	src/oldexpenses.cpp
+Switched to branch 'master'
+Sunil-Reddys-MacBook-Pro:expenses-cpp-repo raksha$ ls
+bin	build	data	include	src
+Sunil-Reddys-MacBook-Pro:expenses-cpp-repo raksha$ git merge test
+Updating 1436046..706fd6d
+Fast-forward
+ makefile | 21 +++++++++++++++++++++
+ 1 file changed, 21 insertions(+)
+ create mode 100644 makefile
+Sunil-Reddys-MacBook-Pro:expenses-cpp-repo raksha$ ls
+bin		build		data		include		makefile	src
